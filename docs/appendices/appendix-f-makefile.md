@@ -95,7 +95,7 @@ azure-login:                        ## Login to Azure CLI
 	az login
 	az account set --subscription $(AZURE_SUBSCRIPTION_ID)
 
-azure-deploy-dev:                   ## Deploy Azure infrastructure (dev environment)
+azure-deploy-dev:                   ## Deploy Azure infrastructure (dev — budget ≤ $50/mo)
 	cd infra && az deployment sub create \
 		--location eastus2 \
 		--template-file main.bicep \
@@ -139,6 +139,15 @@ azure-logs:                         ## Stream Azure Container App logs
 
 azure-destroy:                      ## ⚠️  Destroy Azure environment (requires confirmation)
 	./infra/scripts/destroy.sh $(ENV)
+
+azure-cost:                         ## Show current Azure spend for the resource group
+	az consumption usage list \
+		--start-date $$(date -v-30d +%Y-%m-%d) --end-date $$(date +%Y-%m-%d) \
+		--query "[?contains(instanceName,'investorinsights')].{Name:instanceName, Cost:pretaxCost, Currency:currency}" \
+		--output table
+	@echo ""
+	@echo "Dev budget target: ≤ $$50/month"
+	@echo "Run 'az cost management' in Azure Portal for detailed breakdown."
 
 # ── Debugging ──────────────────────────────────────────────
 shell:                              ## Open Python shell in API container

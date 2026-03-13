@@ -9,7 +9,9 @@ deployment_target: Microsoft Azure Cloud
 purpose: >
   Complete specification for an AI-powered public company analysis platform
   deployed on Azure Cloud using managed services (Container Apps, Azure DB
-  for PostgreSQL, Azure Blob Storage, Azure Cache for Redis, Azure OpenAI).
+  for PostgreSQL, Azure Blob Storage, Azure OpenAI). Development environment
+  is budget-optimised (≤ $50/month) with scale-to-zero, containerised Redis,
+  and no VNet. Production adds managed Redis, VNet, and larger SKUs.
   This document should contain ALL information necessary for an implementor
   to build the system end-to-end without further clarification.
 ---
@@ -135,7 +137,7 @@ An Azure cloud-deployed platform that:
 | Company-scoped | All data, chat, and analysis is organized per-company. The company is the central entity. |
 | User-defined criteria | The financial scoring system is fully configurable. Users define what to measure, how to compute it, what thresholds to apply, and how to weight each criterion. |
 | Grounded AI | The chat agent must ONLY answer based on uploaded filings. It must cite sources. It must refuse to speculate beyond the data. |
-| Azure cloud-deployed | The platform runs on Azure using managed services (Azure Container Apps, Azure Database for PostgreSQL, Azure Blob Storage, Azure Cache for Redis, Azure OpenAI). Only outbound calls beyond Azure are to SEC EDGAR. Infrastructure is provisioned via Bicep/Terraform IaC. |
+| Azure cloud-deployed | The platform runs on Azure using managed services (Azure Container Apps, Azure Database for PostgreSQL, Azure Blob Storage, Azure OpenAI). The development environment is budget-optimised (≤ $50/month) with scale-to-zero containers, smallest DB SKU, containerised Redis, and no VNet. Production adds Azure Cache for Redis, VNet with private endpoints, and larger SKUs. Infrastructure is provisioned via Bicep IaC with per-environment parameter files. |
 | Single user | V1 is designed for a single analyst. Authentication is simple (API key or basic auth). Multi-user is a future consideration. Upgrading to Azure AD/Entra ID is a V2 path. |
 | Offline-capable data | Once filings are ingested, all analysis and chat works without re-fetching from SEC. Only LLM inference requires Azure OpenAI API calls. |
 
@@ -664,7 +666,7 @@ An Azure cloud-deployed platform that:
 | Azure DB for PostgreSQL | Relational data: companies, documents, financials, profiles, results, chat history | Persistent (managed) |
 | Qdrant (Container Apps) | Vector storage and similarity search | Persistent (volume-mounted) |
 | Azure Blob Storage | Raw file storage | Persistent (managed) |
-| Azure Cache for Redis | Celery broker, caching, rate limiting | Semi-persistent (managed) |
+| Redis (Container App in dev / Azure Cache for Redis in prod) | Celery broker, caching, rate limiting | Semi-persistent (transient — loss is recoverable) |
 | Azure Key Vault | Secrets management (API keys, connection strings) | Persistent (managed) |
 | Azure Monitor / App Insights | Logging, metrics, tracing, alerting | Persistent (managed) |
 
@@ -1612,8 +1614,8 @@ Messages sent to the LLM:
 llm:
   # Primary: Azure OpenAI Service (recommended for Azure deployments)
   provider: azure_openai              # azure_openai | openai | anthropic
-  azure_deployment: gpt-4o            # Azure OpenAI deployment name
-  model: gpt-4o                       # model (used with direct OpenAI fallback)
+  azure_deployment: gpt-4o-mini       # Dev: gpt-4o-mini (cheaper); Prod: gpt-4o
+  model: gpt-4o-mini                  # model (used with direct OpenAI fallback)
   fallback_model: gpt-4o-mini         # if primary fails or for cost savings
   temperature: 0.2                    # low temp for factual accuracy
   max_tokens: 4096
@@ -1623,6 +1625,11 @@ llm:
   # Cost control:
   max_monthly_spend: null             # optional dollar limit
   log_token_usage: true               # track tokens per message for cost monitoring
+  
+  # Environment-specific model selection:
+  # Dev ($50/month budget):  gpt-4o-mini (~$0.15/$0.60 per 1M input/output tokens)
+  # Prod:                    gpt-4o (~$2.50/$10.00 per 1M input/output tokens)
+  # Note: gpt-4o-mini provides good quality for development and testing at ~10x lower cost
 ```
 
 ---
@@ -1955,10 +1962,10 @@ chat_interface:
 
 | Component | Technology | SKU / Version | Justification |
 | :-- | :-- | :-- | :-- |
-| Relational DB | Azure Database for PostgreSQL — Flexible Server | Burstable B2s (dev) / General Purpose D2ds_v5 (prod), PG 16 | Managed, auto-backups, HA, JSONB support, VNet integration |
+| Relational DB | Azure Database for PostgreSQL — Flexible Server | Burstable B1ms (dev) / General Purpose D2ds_v5 (prod), PG 16 | Managed, auto-backups, HA, JSONB support, VNet integration |
 | Vector DB | Qdrant (on Azure Container Apps) | 1.9+, with persistent Azure Files volume | Purpose-built vector search, payload filtering, collections. Runs as a sidecar or dedicated Container App. |
 | Object Storage | Azure Blob Storage | Standard LRS (dev) / Standard ZRS (prod) | Managed, scalable, integrated with Azure identity, tiered storage |
-| Cache/Broker | Azure Cache for Redis | Basic C0 (dev) / Standard C1 (prod), Redis 7 | Managed, Celery broker, caching, rate limiting, VNet integration |
+| Cache/Broker | Redis container (dev) / Azure Cache for Redis Standard C1 (prod) | Redis 7 | Dev: containerised Redis on Container Apps (zero cost). Prod: managed, Celery broker, caching, rate limiting, VNet integration |
 
 ### 13.4 External Services
 
@@ -1985,35 +1992,43 @@ The platform is deployed entirely on Microsoft Azure using managed services and 
 │                    Azure Resource Group: rg-investorinsights-{env}       │
 │                                                                         │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │        Azure Container Apps Environment                          │   │
+│  │        Azure Container Apps Environment (Consumption plan)       │   │
 │  │                                                                  │   │
 │  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌───────────┐ │   │
 │  │  │ api        │  │ worker     │  │ frontend   │  │ qdrant    │ │   │
 │  │  │ (FastAPI)  │  │ (Celery)   │  │ (Next.js)  │  │ (vector   │ │   │
-│  │  │ min: 1     │  │ min: 1     │  │ min: 1     │  │  DB)      │ │   │
-│  │  │ max: 5     │  │ max: 5     │  │ max: 3     │  │ replicas:1│ │   │
-│  │  └────────────┘  └────────────┘  └────────────┘  └───────────┘ │   │
+│  │  │ dev: 0→1   │  │ dev: 0→2   │  │ dev: 0→1   │  │  DB)      │ │   │
+│  │  │ prod: 1→5  │  │ prod: 1→5  │  │ prod: 1→3  │  │ dev: 0→1  │ │   │
+│  │  └────────────┘  └────────────┘  └────────────┘  │ prod: 1   │ │   │
+│  │                                  ┌───────────┐   └───────────┘ │   │
+│  │                                  │ redis     │                 │   │
+│  │                                  │ (dev only)│                 │   │
+│  │                                  │ 0→1       │                 │   │
+│  │                                  └───────────┘                 │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
 │  ┌──────────────┐ ┌──────────────┐ ┌───────────┐ ┌──────────────────┐  │
 │  │ Azure DB for │ │ Azure Blob   │ │ Azure     │ │ Azure Key Vault  │  │
 │  │ PostgreSQL   │ │ Storage      │ │ Cache for │ │                  │  │
 │  │ Flex Server  │ │ Account      │ │ Redis     │ │ • API keys       │  │
-│  │              │ │              │ │           │ │ • connection strs │  │
-│  │ • PG 16      │ │ • filings   │ │ • broker  │ │ • certificates   │  │
-│  │ • auto-backup│ │   container  │ │ • cache   │ │                  │  │
-│  │ • VNet       │ │ • exports   │ │ • rate lim│ │                  │  │
+│  │              │ │              │ │ (prod     │ │ • connection strs │  │
+│  │ • dev: B1ms  │ │ • filings   │ │  only)    │ │ • certificates   │  │
+│  │ • prod: D2ds │ │   container  │ │ • broker  │ │                  │  │
+│  │ • auto-backup│ │ • exports   │ │ • cache   │ │                  │  │
 │  └──────────────┘ │   container  │ └───────────┘ └──────────────────┘  │
 │                   └──────────────┘                                      │
 │  ┌──────────────┐ ┌──────────────────┐ ┌────────────────────────────┐  │
 │  │ Azure OpenAI │ │ Azure Monitor /  │ │ Azure Container Registry   │  │
 │  │ Service      │ │ App Insights     │ │                            │  │
 │  │              │ │                  │ │ • backend image            │  │
-│  │ • gpt-4o     │ │ • logs           │ │ • frontend image           │  │
-│  │ • embeddings │ │ • metrics        │ │                            │  │
-│  └──────────────┘ │ • traces         │ └────────────────────────────┘  │
-│                   │ • alerts         │                                  │
-│                   └──────────────────┘                                  │
+│  │ • gpt-4o-mini│ │ • logs           │ │ • frontend image           │  │
+│  │   (dev)     │ │ • metrics        │ │                            │  │
+│  │ • gpt-4o    │ │ • traces         │ └────────────────────────────┘  │
+│  │   (prod)    │ │ • alerts         │                                  │
+│  └──────────────┘ └──────────────────┘                                  │
+│                                                                         │
+│  Dev: public endpoints + firewall rules (no VNet, saves ~$40/mo)       │
+│  Prod: VNet + private endpoints for all data services (see §14.9)      │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -2022,6 +2037,8 @@ The platform is deployed entirely on Microsoft Azure using managed services and 
 ```yaml
 # Container Apps are defined in Bicep (infra/modules/container-apps.bicep)
 # Below is the logical configuration for each app.
+# Resource values shown are for PRODUCTION. Development overrides are listed
+# at the bottom of this section.
 
 api:
   image: ${ACR_LOGIN_SERVER}/investorinsights-api:${IMAGE_TAG}
@@ -2106,6 +2123,57 @@ qdrant:
   ingress:
     external: false      # internal only — accessed by api and worker
     targetPort: 6333
+
+# ── Development overrides (budget: ≤ $50/month) ─────────────────
+# These overrides apply only to the dev environment. They reduce
+# resource allocations and enable scale-to-zero to minimise cost.
+development_overrides:
+  api:
+    resources:
+      cpu: 0.25
+      memory: 0.5Gi
+    scale:
+      minReplicas: 0               # scale-to-zero when idle (first request ~5s cold start)
+      maxReplicas: 1
+  worker:
+    resources:
+      cpu: 0.5
+      memory: 1Gi
+    scale:
+      minReplicas: 0               # scale-to-zero — spins up when Celery queue has tasks
+      maxReplicas: 2
+    command: ["celery", "-A", "app.worker.celery_app", "worker",
+              "--loglevel=info", "--concurrency=2",
+              "--queues=ingestion,analysis,sec_fetch",
+              "--max-tasks-per-child=50"]
+  frontend:
+    resources:
+      cpu: 0.25
+      memory: 0.5Gi
+    scale:
+      minReplicas: 0               # scale-to-zero when idle
+      maxReplicas: 1
+  qdrant:
+    resources:
+      cpu: 0.25
+      memory: 1Gi
+    scale:
+      minReplicas: 0               # scale-to-zero — API requests trigger wake-up
+      maxReplicas: 1
+  redis:                           # additional Container App in dev only
+    image: redis:7-alpine
+    resources:
+      cpu: 0.25
+      memory: 0.5Gi
+    scale:
+      minReplicas: 0               # scale-to-zero when idle
+      maxReplicas: 1
+    ingress:
+      external: false
+      targetPort: 6379
+    note: >
+      In dev, Redis runs as a Container App instead of Azure Cache for Redis
+      to save ~$17/month. In production, use Azure Cache for Redis (see §14.5).
 ```
 
 ### 14.3 Backend Dockerfile
@@ -2166,44 +2234,71 @@ CMD ["node", "server.js"]
 
 ### 14.5 Azure Resource SKUs & Sizing
 
+> **Budget note:** The development environment is optimised for a **≤ $50/month**
+> Azure spend target (single developer, light usage). Cost-saving strategies:
+> no VNet/private endpoints, no managed Redis, scale-to-zero on idle containers,
+> smallest Postgres SKU. Production uses full managed services and networking.
+
 ```yaml
 environments:
   development:
+    # ── Target budget: ≤ $50/month ──────────────────────────────────
     resource_group: rg-investorinsights-dev
     location: eastus2
+    networking: public              # no VNet / private endpoints (saves ~$40/mo)
     services:
       postgresql:
-        sku: Burstable_B2s            # 2 vCores, 4 GB RAM
+        sku: Burstable_B1ms            # 1 vCore, 2 GB RAM  (~$13/mo)
         storage_gb: 32
         backup_retention_days: 7
         high_availability: false
+        public_network_access: true    # firewall rule: allow Container Apps outbound IPs
       redis:
-        sku: Basic_C0                  # 250 MB, shared
+        type: container               # containerised Redis on Container Apps (~$0)
+        image: redis:7-alpine         # runs as a Container App with scale-to-zero
+        note: >
+          No Azure Cache for Redis in dev — a simple Redis container is sufficient
+          for single-developer use. Saves ~$17/mo.
       blob_storage:
-        sku: Standard_LRS             # locally redundant
+        sku: Standard_LRS             # locally redundant  (~$0.50/mo for light usage)
         access_tier: Hot
       azure_openai:
-        sku: S0
+        sku: S0                        # base cost: $0 (pay-per-token only)
         deployments:
-          - name: gpt-4o
-            model: gpt-4o
-            capacity: 30              # 30K TPM
+          - name: gpt-4o-mini
+            model: gpt-4o-mini
+            capacity: 30              # 30K TPM (cheaper model for dev)
           - name: text-embedding-3-large
             model: text-embedding-3-large
             capacity: 120             # 120K TPM
+        estimated_token_cost: ~$1–5/mo # light dev usage
       container_apps:
-        environment_sku: Consumption  # pay per use
+        environment_sku: Consumption  # pay per use — scale-to-zero for idle apps
       container_registry:
-        sku: Basic
+        sku: Basic                     # ~$5/mo
       key_vault:
-        sku: Standard
+        sku: Standard                  # ~$0.03/mo (10K ops free)
       log_analytics:
-        sku: PerGB2018
+        sku: PerGB2018                 # ~$2–5/mo (first 5 GB/mo free)
         retention_days: 30
+        daily_cap_gb: 0.5             # cap ingestion to control cost
+
+    # ── Dev cost breakdown (estimated) ─────────────────────────────
+    # PostgreSQL Burstable B1ms (1 vCore, 2GB)       ~$13.00
+    # Azure Blob Storage (Standard LRS, <1 GB)       ~ $0.50
+    # Container Apps (Consumption, scale-to-zero)     ~ $3–10  (idle most of day)
+    # Azure Container Registry (Basic)                ~ $5.00
+    # Azure Key Vault (Standard, low ops)             ~ $0.03
+    # Log Analytics (~0.5 GB/mo ingestion)            ~ $0.00  (within free tier)
+    # Azure OpenAI (gpt-4o-mini + embeddings, light)  ~ $1–5
+    # Redis container (in Container Apps)             ~ $0.00  (included in CA cost)
+    # ────────────────────────────────────────────────────────────────
+    # TOTAL                                           ~$22–34/month
 
   production:
     resource_group: rg-investorinsights-prod
     location: eastus2
+    networking: vnet                 # full VNet + private endpoints
     services:
       postgresql:
         sku: GeneralPurpose_D2ds_v5   # 2 vCores, 8 GB RAM
@@ -2212,6 +2307,7 @@ environments:
         high_availability: true        # zone-redundant HA
         geo_redundant_backup: true
       redis:
+        type: managed
         sku: Standard_C1              # 1 GB, dedicated, SLA
       blob_storage:
         sku: Standard_ZRS             # zone-redundant
@@ -2243,9 +2339,10 @@ environments:
         retention_days: 90
 
 estimated_monthly_cost:
-  development: ~$150–250/month
+  development: ~$22–34/month       # within $50 budget (single developer, light usage)
   production: ~$400–700/month
-  # Excludes Azure OpenAI token usage (pay-per-use, varies with chat volume)
+  # Azure OpenAI token usage is pay-per-use and varies with chat volume.
+  # Dev uses gpt-4o-mini (cheaper) instead of gpt-4o.
 ```
 
 ### 14.6 Secrets Management (Azure Key Vault)
@@ -2279,20 +2376,20 @@ infra/
 ├── main.bicep                   # Orchestrator — deploys all modules
 ├── main.bicepparam              # Parameter file per environment
 ├── parameters/
-│   ├── dev.bicepparam
-│   └── prod.bicepparam
+│   ├── dev.bicepparam           # Budget-optimised: no VNet, B1ms PG, container Redis
+│   └── prod.bicepparam          # Full: VNet, managed Redis, larger SKUs
 ├── modules/
 │   ├── resource-group.bicep
-│   ├── networking.bicep         # VNet, subnets, private endpoints
+│   ├── networking.bicep         # VNet, subnets, private endpoints (prod only)
 │   ├── postgresql.bicep         # Azure DB for PostgreSQL Flex
-│   ├── redis.bicep              # Azure Cache for Redis
+│   ├── redis.bicep              # Azure Cache for Redis (prod only)
 │   ├── storage.bicep            # Azure Blob Storage account + containers
 │   ├── openai.bicep             # Azure OpenAI + model deployments
 │   ├── key-vault.bicep          # Azure Key Vault + secrets
 │   ├── container-registry.bicep # Azure Container Registry
 │   ├── log-analytics.bicep      # Log Analytics workspace
 │   ├── app-insights.bicep       # Application Insights
-│   └── container-apps.bicep     # Container Apps Environment + apps
+│   └── container-apps.bicep     # Container Apps Environment + apps (incl. redis in dev)
 └── scripts/
     ├── deploy.sh                # az deployment sub create wrapper
     ├── destroy.sh               # tear down environment
@@ -2344,31 +2441,59 @@ backups:
 
 ```yaml
 networking:
-  vnet:
-    name: vnet-investorinsights-{env}
-    address_space: "10.0.0.0/16"
-    subnets:
-      - name: snet-container-apps
-        address_prefix: "10.0.0.0/23"
-        delegation: Microsoft.App/environments
-      - name: snet-postgresql
-        address_prefix: "10.0.2.0/24"
-        delegation: Microsoft.DBforPostgreSQL/flexibleServers
-      - name: snet-private-endpoints
-        address_prefix: "10.0.3.0/24"
+  # ── Development: public endpoints + firewall rules ─────────────
+  # No VNet or private endpoints in dev to save ~$40/month.
+  # All Azure services use public endpoints with IP-based firewall rules.
+  development:
+    mode: public
+    postgresql:
+      public_network_access: true
+      firewall_rules:
+        - name: AllowContainerApps
+          start_ip: <Container Apps outbound IP>
+          end_ip: <Container Apps outbound IP>
+        - name: AllowDevMachine
+          start_ip: <developer IP>       # for local tooling (psql, migrations)
+          end_ip: <developer IP>
+    blob_storage:
+      public_network_access: true        # Secured via SAS tokens / managed identity
+    key_vault:
+      public_network_access: true        # Secured via RBAC + managed identity
+    azure_openai:
+      public_network_access: true        # Secured via API key + managed identity
+    notes:
+      - Acceptable security for single-developer non-production environment
+      - All services still require authentication (managed identity / API keys)
+      - Add developer IP to PostgreSQL firewall for local admin access
 
-  private_endpoints:
-    - Azure DB for PostgreSQL (private link)
-    - Azure Cache for Redis (private link)
-    - Azure Blob Storage (private link)
-    - Azure Key Vault (private link)
-    - Azure OpenAI (private link)
+  # ── Production: full VNet isolation ────────────────────────────
+  production:
+    mode: vnet
+    vnet:
+      name: vnet-investorinsights-prod
+      address_space: "10.0.0.0/16"
+      subnets:
+        - name: snet-container-apps
+          address_prefix: "10.0.0.0/23"
+          delegation: Microsoft.App/environments
+        - name: snet-postgresql
+          address_prefix: "10.0.2.0/24"
+          delegation: Microsoft.DBforPostgreSQL/flexibleServers
+        - name: snet-private-endpoints
+          address_prefix: "10.0.3.0/24"
 
-  notes:
-    - All data services are on private endpoints (no public internet access)
-    - Container Apps Environment is VNet-integrated
-    - Only the frontend and API Container Apps have external ingress
-    - Qdrant is internal-only (no external ingress)
+    private_endpoints:
+      - Azure DB for PostgreSQL (private link)
+      - Azure Cache for Redis (private link)
+      - Azure Blob Storage (private link)
+      - Azure Key Vault (private link)
+      - Azure OpenAI (private link)
+
+    notes:
+      - All data services are on private endpoints (no public internet access)
+      - Container Apps Environment is VNet-integrated
+      - Only the frontend and API Container Apps have external ingress
+      - Qdrant is internal-only (no external ingress)
 ```
 
 ---
@@ -2823,10 +2948,11 @@ AZURE_STORAGE_CONTAINER_EXPORTS=exports
 # For local dev with Azurite (Azure Storage emulator):
 # AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=...;BlobEndpoint=http://azurite:10000/devstoreaccount1;
 
-# ── Redis (Azure Cache for Redis) ────────────────────────────────
-REDIS_URL=redis://localhost:6379/0      # Azure: rediss://{name}.redis.cache.windows.net:6380
-REDIS_PASSWORD=                         # 🔒 Key Vault in Azure
-REDIS_SSL=false                         # Azure: true (TLS enforced)
+# ── Redis (Container App in dev / Azure Cache for Redis in prod) ──
+REDIS_URL=redis://localhost:6379/0      # Azure dev: redis://redis:6379/0 (Container App)
+                                        # Azure prod: rediss://{name}.redis.cache.windows.net:6380
+REDIS_PASSWORD=                         # 🔒 Key Vault in Azure (prod only; dev container has no auth)
+REDIS_SSL=false                         # Azure prod: true (TLS enforced on managed Redis)
 REDIS_MAX_CONNECTIONS=20
 
 # ── Celery Workers ───────────────────────────────────────────────
@@ -2841,7 +2967,7 @@ LLM_PROVIDER=azure_openai               # azure_openai | openai | anthropic
 AZURE_OPENAI_API_KEY=                    # 🔒 Key Vault in Azure
 AZURE_OPENAI_ENDPOINT=https://{name}.openai.azure.com/
 AZURE_OPENAI_API_VERSION=2024-10-21
-AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o     # Azure deployment name for chat
+AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini # Azure deployment name (dev: gpt-4o-mini, prod: gpt-4o)
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-large  # deployment for embeddings
 
 # ── OpenAI Direct (optional fallback) ────────────────────────────
@@ -2849,7 +2975,7 @@ AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-large  # deployment for embed
 # OPENAI_ORG_ID=                           # optional organization ID
 
 # ── LLM Configuration ───────────────────────────────────────────
-LLM_MODEL=gpt-4o                        # model name
+LLM_MODEL=gpt-4o-mini                   # dev: gpt-4o-mini (cheaper); prod: gpt-4o
 LLM_FALLBACK_MODEL=gpt-4o-mini          # fallback if primary fails
 LLM_TEMPERATURE=0.2
 LLM_MAX_TOKENS=4096
@@ -2953,7 +3079,9 @@ class AppConfig(BaseSettings):
 
 - Project scaffolding (monorepo structure)
 - Azure infrastructure provisioning via Bicep IaC:
-  - Resource Group, VNet, Azure DB for PostgreSQL, Azure Cache for Redis, Azure Blob Storage, Azure Key Vault, Azure Container Registry, Log Analytics + App Insights, Azure OpenAI Service
+  - Resource Group, Azure DB for PostgreSQL (B1ms), Azure Blob Storage, Azure Key Vault, Azure Container Registry, Log Analytics + App Insights, Azure OpenAI Service
+  - Dev: no VNet/private endpoints (public endpoints + firewall rules); Redis as Container App
+  - Prod: adds VNet, private endpoints, Azure Cache for Redis, larger SKUs
 - Docker Compose for local development (with Azurite, local PostgreSQL, Redis, Qdrant)
 - FastAPI application skeleton with health check
 - PostgreSQL schema + Alembic migrations

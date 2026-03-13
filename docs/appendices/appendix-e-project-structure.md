@@ -17,20 +17,20 @@ company-analysis-platform/
 │   ├── main.bicep                        # orchestrator — deploys all modules
 │   ├── main.bicepparam
 │   ├── parameters/
-│   │   ├── dev.bicepparam
-│   │   └── prod.bicepparam
+│   │   ├── dev.bicepparam                # budget-optimised: no VNet, B1ms PG, container Redis
+│   │   └── prod.bicepparam              # full: VNet, managed Redis, larger SKUs
 │   ├── modules/
 │   │   ├── resource-group.bicep
-│   │   ├── networking.bicep              # VNet, subnets, private endpoints
+│   │   ├── networking.bicep              # VNet, subnets, private endpoints (prod only)
 │   │   ├── postgresql.bicep              # Azure DB for PostgreSQL Flex Server
-│   │   ├── redis.bicep                   # Azure Cache for Redis
+│   │   ├── redis.bicep                   # Azure Cache for Redis (prod only)
 │   │   ├── storage.bicep                 # Azure Blob Storage + containers
 │   │   ├── openai.bicep                  # Azure OpenAI + model deployments
 │   │   ├── key-vault.bicep               # Azure Key Vault + secrets
 │   │   ├── container-registry.bicep      # Azure Container Registry
 │   │   ├── log-analytics.bicep           # Log Analytics workspace
 │   │   ├── app-insights.bicep            # Application Insights
-│   │   └── container-apps.bicep          # Container Apps Environment + apps
+│   │   └── container-apps.bicep          # Container Apps Environment + apps (incl. redis in dev)
 │   ├── dashboards/
 │   │   ├── api-performance.json          # Azure Portal dashboard template
 │   │   ├── ingestion-pipeline.json
