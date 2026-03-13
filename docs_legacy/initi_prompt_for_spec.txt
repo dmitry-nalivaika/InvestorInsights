@@ -1,0 +1,40 @@
+I'd like to build an application that will help me to analyze public companies. Technically this should give me a complete, production-quality system: raw SEC filings go in, structured financial data and semantically searchable document chunks come out, and you interact through both a conversational AI agent and a quantitative scoring framework defined by your own criteria.
+
+High level business requirements are:
+
+I want to be able to upload public reports from SEC to some storage, per company.
+There should be AI system that is able to learn the uploaded reports, lets say for the last 10 years, those are annual and quaterly reports.
+I should be able to talk to the agent per company that should be able to answer my questions based on the data from reports - about the business, risks, changes in direction, etc, focuses of the company, etc.
+I am also having my own way of analysis the company financials, so I would like to put 10-30 criteria on what I want to analyze from finansial historical data, which multiplicators I want to check and compare them with my threshholds or requirements. I want to be able this data to be exported to the excel with financial data tables and charts over it.
+I want my chats with agents to be stored, so when new reports are uploaded I can just talk about the updates
+I want this application to be implemented in .NET and Python (for components where it suits better), for Front-end - Angular.
+I want the system to be extendable
+I want it to be hosted in Azure, ideally to have resources that are not expensive as I have only 50$ monthly limit
+I want the code to be in GitHub and automatically deployed to Azure.
+I want also the comprehensive documentation of architecture and everything else created and put into the Git
+
+Instead of the straightforward implementation - lets start with creating the comprehansive .md spec. Based on what I provided - can you please extend it to much more details, including functional and non functional requirements, tech stack, infrastructure. Later this spec will be passed to Claude Opus to implement the system as a blackbox factory. Include also how the system should be tested
+
+Table of Contents
+
+Executive Summary
+Glossary & Definitions
+User Personas & Stories
+Functional Requirements
+Non-Functional Requirements
+System Architecture
+Data Model
+API Specification
+Ingestion Pipeline
+RAG Chat Agent
+Financial Analysis Engine
+Frontend Specification
+Technology Stack
+Infrastructure & Deployment
+Security
+Testing Strategy
+Observability & Monitoring
+Error Handling & Resilience
+Configuration Management
+Implementation Phases & Milestones
+Appendices
