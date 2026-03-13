@@ -17,6 +17,7 @@
 - [ ] **FR-104** System SHOULD allow updating company metadata
 - [ ] **FR-105** System SHOULD allow deleting a company and ALL associated data
 - [ ] **FR-106** System SHOULD support searching/filtering companies
+- [ ] **FR-107** System MUST support offset/limit pagination on all list endpoints (total count, limit, offset in responses)
 
 ### Document Management
 
@@ -24,7 +25,7 @@
 - [ ] **FR-201** System MUST accept filing metadata (doc_type, fiscal_year, quarter, dates)
 - [ ] **FR-202** System MUST store files organized by company/type/year
 - [ ] **FR-203** System MUST prevent duplicate uploads
-- [ ] **FR-204** System MUST track processing status (uploaded → ready → error)
+- [ ] **FR-204** System MUST track processing status (uploaded → parsing → parsed → embedding → ready → error)
 - [ ] **FR-205** System MUST support auto-fetching from SEC EDGAR
 - [ ] **FR-206** System MUST respect SEC EDGAR rate limits (10 req/s)
 - [ ] **FR-207** System MUST extract text from PDF preserving structure
