@@ -13,7 +13,7 @@
 | [`spec.md`](spec.md) | **WHAT & WHY** — User stories, acceptance criteria, functional requirements, success metrics |
 | [`plan.md`](plan.md) | **HOW** — Architecture, tech stack, infrastructure, data flows, security, observability |
 | [`data-model.md`](data-model.md) | ERD, entities, enums, JSONB schemas, Qdrant vector store |
-| [`tasks.md`](tasks.md) | 10-phase breakdown, 90+ tasks (T001 → T816), story-based organization with [P] parallel markers |
+| [`tasks.md`](tasks.md) | 10-phase breakdown, ~105 tasks (T001 → T821), story-based organization with [P] parallel markers |
 | [`research.md`](research.md) | 10 key technical decisions with rationale and trade-offs |
 | [`quickstart.md`](quickstart.md) | 6 validation scenarios with curl commands, mapped to phases |
 | [`contracts/api-spec.md`](contracts/api-spec.md) | Full REST API contract — all endpoints, request/response shapes |
@@ -23,7 +23,7 @@
 
 | File | Origin |
 |------|--------|
-| [`reference/builtin-formulas.md`](reference/builtin-formulas.md) | 13 built-in financial ratios/metrics |
+| [`reference/builtin-formulas.md`](reference/builtin-formulas.md) | 28 built-in financial ratios/metrics |
 | [`reference/xbrl-tag-mapping.md`](reference/xbrl-tag-mapping.md) | SEC XBRL taxonomy → internal field mapping |
 | [`reference/sec-filing-sections.md`](reference/sec-filing-sections.md) | 10-K / 10-Q section breakdown |
 | [`reference/default-analysis-profile.md`](reference/default-analysis-profile.md) | Seed analysis profile (Warren Buffett criteria) |

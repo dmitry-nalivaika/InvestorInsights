@@ -175,7 +175,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-211**: System SHOULD support deletion of individual documents with cascade cleanup
 
 **Ingestion Pipeline**
-- **FR-300**: System MUST chunk document sections into segments of 512–1024 tokens with 10–20% overlap
+- **FR-300**: System MUST chunk document sections into segments of ~768 tokens (configurable within 512–1024) with 10–20% overlap
 - **FR-301**: System MUST generate vector embeddings for each chunk
 - **FR-302**: System MUST store embeddings in a vector database in a company-scoped collection
 - **FR-303**: System MUST attach metadata to each vector (company_id, document_id, doc_type, fiscal_year, section_key, etc.)
@@ -187,7 +187,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 
 **Chat Agent**
 - **FR-400**: System MUST provide a conversational AI agent scoped to a single company per session
-- **FR-401**: System MUST retrieve top-K relevant chunks via semantic similarity search (configurable top-K, default 15, max 50)
+- **FR-401**: System MUST retrieve top-K relevant chunks via semantic similarity search (configurable top-K, default 15, max 50; configurable score threshold, default 0.65)
 - **FR-402**: System MUST inject retrieved chunks as context into the LLM prompt
 - **FR-403**: System MUST stream LLM responses token-by-token via Server-Sent Events
 - **FR-404**: System MUST include source citations in responses (document type, year, section)
@@ -218,7 +218,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 
 ### Key Entities
 
-- **Company**: Tracked public company (ticker, name, CIK, sector, industry). Central entity — all other data belongs to a company.
+- **Company**: Tracked public company (ticker, name, CIK, sector, industry, description). Central entity — all other data belongs to a company.
 - **Document**: An SEC filing (10-K, 10-Q) with metadata, processing status, and storage reference. One company has many documents.
 - **Section**: A distinct part of a document (e.g., Item 1A — Risk Factors). Sections are split from documents during parsing.
 - **Chunk**: A text segment (512–1024 tokens) created by splitting sections. Chunks are embedded and stored in the vector database.

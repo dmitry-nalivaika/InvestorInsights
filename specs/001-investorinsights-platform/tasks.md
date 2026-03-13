@@ -71,7 +71,7 @@
 - [ ] T104 [US1] Unique ticker constraint enforcement (409 on duplicate)
 - [ ] T105 [US1] Company list with summary statistics (doc count, latest filing, readiness %) in `backend/app/api/companies.py`
 - [ ] T106 [US1] Company delete with CASCADE cleanup (all associated data) in `backend/app/services/company_service.py`
-- [ ] T109 [US1] Company metadata update — `PUT /api/v1/companies/{id}` partial update (name, sector, industry override) in `backend/app/api/companies.py` (FR-104)
+- [ ] T109 [US1] Company metadata update — `PUT /api/v1/companies/{id}` partial update (name, sector, industry, description override) in `backend/app/api/companies.py` (FR-104)
 - [ ] T110 [US1] Company search and filter — query params `?search=` (ticker, name) and `?sector=` on list endpoint in `backend/app/api/companies.py` (FR-106)
 
 ### Tests for User Story 1
@@ -112,7 +112,7 @@
 
 - [ ] T300 [P] [US2] SEC EDGAR filing index fetcher — list available filings for company/CIK in `backend/app/clients/sec_client.py`
 - [ ] T301 [P] [US2] SEC EDGAR filing downloader — fetch actual filing documents in `backend/app/clients/sec_client.py`
-- [ ] T302 [US2] Rate limiter for SEC API (max 10 req/s, User-Agent header) in `backend/app/clients/sec_client.py`
+- [ ] T302 [US2] SEC API rate limiter integration test — verify 10 req/s enforcement and User-Agent header from T019 in `backend/app/clients/sec_client.py`
 - [ ] T303 [P] [US2] XBRL `companyfacts` API integration — fetch structured financial data in `backend/app/clients/sec_xbrl_client.py`
 - [ ] T304 [US2] XBRL tag → internal schema mapper (60+ US-GAAP tags) in `backend/app/ingestion/xbrl_mapper.py`
 - [ ] T305 [US2] Financial statements storage in PostgreSQL (JSONB `statement_data`) in `backend/app/services/financial_service.py`
@@ -272,7 +272,7 @@
 - [ ] T800 [P] Rate limiting implementation (100 req/min CRUD, 20 req/min chat) in `backend/app/api/middleware/`
 - [ ] T801 E2E tests — company journey, upload+chat journey, analysis journey in `backend/tests/e2e/`
 - [ ] T802 [P] Performance testing (Locust) — ingestion throughput, vector search latency, chat TTFT in `backend/tests/performance/`
-- [ ] T803 Production Docker images — verify multi-stage builds, non-root user, image size (checkpoint for T804 + T805)
+- [ ] T803 Review & approve Docker image config — verify multi-stage builds, non-root user, image size < 200 MB for T804 + T805 (review gate, no code output)
 - [ ] T804 [P] Backend Dockerfile (Python 3.12-slim, PyMuPDF deps, non-root) in `backend/Dockerfile`
 - [ ] T805 [P] Frontend Dockerfile (Node 20-alpine, standalone build) in `frontend/Dockerfile`
 - [ ] T806 CI/CD pipeline — GitHub Actions → build → test → push ACR → deploy Container Apps in `.github/workflows/`
@@ -287,6 +287,7 @@
 - [ ] T815 Circuit breaker implementation (Azure OpenAI, SEC EDGAR, Qdrant) in `backend/app/clients/`
 - [ ] T819 [P] Qdrant unavailable degradation — CRUD and financial analysis remain functional, chat returns clear "unavailable" message in `backend/app/services/chat_service.py`
 - [ ] T820 [P] No-XBRL-data handling — filings without XBRL data log warning, store available data, do not block text ingestion in `backend/app/ingestion/pipeline.py`
+- [ ] T821 [P] Budget monitoring runbook — document manual scale-to-zero procedure, gpt-4o-mini switch, Redis removal steps for when $50/month dev budget is at risk in `docs/runbooks/budget-breach.md` (Constitution IV, spec edge case)
 - [ ] T816 Run quickstart.md validation — all 6 scenarios pass
 - [ ] T818 Ingestion idempotency verification — re-running full pipeline on already-ingested document produces identical chunks, vectors, and financial data (SC-012) in `backend/tests/integration/test_idempotency.py`
 

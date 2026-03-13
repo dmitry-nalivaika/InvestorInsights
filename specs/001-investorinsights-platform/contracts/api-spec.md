@@ -332,6 +332,15 @@ GET /api/v1/analysis/results/{result_id}:
   description: Get a specific analysis result
   response: 200 OK
 
+GET /api/v1/analysis/results/{result_id}/export:
+  description: Export a specific analysis result as downloadable JSON
+  response: 200 OK (application/json)
+    headers:
+      Content-Disposition: attachment; filename="{ticker}_{profile}_{date}.json"
+    body: Full AnalysisResult object (same shape as GET /results/{result_id})
+  errors:
+    404: Result not found
+
 GET /api/v1/analysis/formulas:
   description: List all available built-in formulas
   response: 200 OK

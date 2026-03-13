@@ -48,7 +48,7 @@
 ### Chat Agent
 
 - [ ] **FR-400** System MUST provide company-scoped conversational AI agent
-- [ ] **FR-401** System MUST retrieve top-K chunks via semantic search (configurable top-K, default 15, max 50)
+- [ ] **FR-401** System MUST retrieve top-K chunks via semantic search (configurable top-K, default 15, max 50; configurable score threshold, default 0.65)
 - [ ] **FR-402** System MUST inject chunks as LLM context
 - [ ] **FR-403** System MUST stream responses via SSE
 - [ ] **FR-404** System MUST include source citations

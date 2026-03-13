@@ -58,7 +58,7 @@ specs/001-investorinsights-platform/
 ├── research.md          # Key technical decisions with rationale
 ├── data-model.md        # ERD, entities, enums, JSONB schemas, Qdrant config
 ├── quickstart.md        # 6 validation scenarios with curl commands
-├── tasks.md             # 10-phase task breakdown (T001 → T816)
+├── tasks.md             # 10-phase task breakdown (T001 → T821)
 ├── contracts/
 │   └── api-spec.md      # Full REST API contract
 ├── checklists/
