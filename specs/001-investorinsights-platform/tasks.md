@@ -85,7 +85,7 @@
 - [ ] T100 [P] [US1] Company repository (data access layer) in `backend/app/services/company_repository.py`
 - [ ] T101 [P] [US1] SEC EDGAR client — ticker → CIK resolution, company metadata lookup in `backend/app/clients/sec_client.py`
 - [ ] T102 [US1] Company service (business logic, auto-resolve from SEC) in `backend/app/services/company_service.py` (depends on T100, T101)
-- [ ] T103 [US1] Company CRUD API — `POST/GET/PUT/DELETE /api/v1/companies` in `backend/app/api/companies.py`
+- [ ] T103 [US1] Company CRUD API — `POST/GET/PUT/DELETE /api/v1/companies` in `backend/app/api/companies.py`. Implement a shared pagination utility (offset/limit with total count in response) in `backend/app/api/pagination.py` and apply it here first; reuse in all subsequent list endpoints (FR-107)
 - [ ] T104 [US1] Unique ticker constraint enforcement (409 on duplicate)
 - [ ] T105 [US1] Company list with summary statistics (doc count, latest filing, readiness %) in `backend/app/api/companies.py`
 - [ ] T106 [US1] Company delete with CASCADE cleanup (all associated data) within a single database transaction (NFR-203) in `backend/app/services/company_service.py`
@@ -95,7 +95,7 @@
 ### Tests for User Story 1
 
 - [ ] T107 [P] [US1] Unit tests — company service, SEC client (mocked) in `backend/tests/unit/test_company_service.py`
-- [ ] T108 [P] [US1] Integration tests — company CRUD API against test DB in `backend/tests/integration/test_companies_api.py`
+- [ ] T108 [P] [US1] Integration tests — company CRUD API against test DB; MUST include a cascade-delete rollback test: simulate a failure mid-cascade (e.g., Qdrant unavailable during company delete) and verify the database transaction is fully rolled back with no orphaned records (NFR-203 atomicity) in `backend/tests/integration/test_companies_api.py`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -146,7 +146,7 @@
 ### Tests for User Story 2
 
 - [ ] T302 [P] [US2] Integration test — SEC API rate limiter (verify 10 req/s enforcement and User-Agent header from T019) in `backend/tests/integration/test_sec_rate_limiter.py`
-- [ ] T311 [P] [US2] Unit tests — parser, splitter, chunker, cleaner, XBRL mapper in `backend/tests/unit/test_ingestion.py`
+- [ ] T311 [P] [US2] Unit tests — parser, splitter, chunker, cleaner, XBRL mapper; MUST include a magic-byte validation test: verify a file with a spoofed `.pdf` extension (e.g., a JPEG renamed to `.pdf`) is rejected based on magic bytes, not file extension (NFR-302) in `backend/tests/unit/test_ingestion.py`
 - [ ] T312 [P] [US2] Integration tests — full pipeline (upload → Celery dispatch → ready) in `backend/tests/integration/test_ingestion_pipeline.py`
 - [ ] T313 [P] [US2] Integration tests — SEC fetch + XBRL extract flow in `backend/tests/integration/test_sec_fetch.py`
 - [ ] T818 [US2] Ingestion idempotency verification — re-running full pipeline on already-ingested document produces identical chunks, vectors, and financial data (SC-012, NFR-202) in `backend/tests/integration/test_idempotency.py`
@@ -181,7 +181,7 @@
 
 ### Tests for User Story 3
 
-- [ ] T413 [P] [US3] Unit tests — prompt builder, retrieval logic, context assembly, out-of-scope refusal (at least 5 prompt variants: future prediction, buy/sell recommendation, unrelated topic, personal opinion, external data request per SC-003) in `backend/tests/unit/test_chat_agent.py`
+- [ ] T413 [P] [US3] Unit tests — prompt builder, retrieval logic, context assembly, out-of-scope refusal (at least 5 prompt variants: future prediction, buy/sell recommendation, unrelated topic, personal opinion, external data request per SC-003); MUST include a test that explicitly asserts user message content never appears in the system prompt string (NFR-301 — LLM prompt security) in `backend/tests/unit/test_chat_agent.py`
 - [ ] T413a [P] [US3] Unit tests — query expansion graceful degradation: verify fallback to original query when LLM call times out, when LLM returns error, and when circuit breaker is open; verify that query expansion failure does NOT block or delay the chat response (FR-409 fallback requirement) in `backend/tests/unit/test_query_expansion.py`
 - [ ] T414 [P] [US3] Integration tests — full chat flow (mocked LLM), assert source citations are present in responses for on-topic queries (SC-002 validation) in `backend/tests/integration/test_chat_api.py`
 
@@ -275,7 +275,7 @@
 
 ### Tests for User Story 7
 
-- [ ] T716 [P] [US7] Frontend component tests (Vitest + RTL) in `frontend/tests/`
+- [ ] T716 [P] [US7] Frontend component tests (Vitest + RTL); MUST include a Settings page test that verifies all config values from US7-AS6 are rendered (LLM model name, embedding model name, chunk size, chunk overlap, default top-K, score threshold, API key status) in `frontend/tests/`
 
 **Checkpoint**: All user stories should now be independently functional with full UI
 
@@ -305,7 +305,7 @@
 - [ ] T819 [P] Qdrant unavailable degradation — CRUD and financial analysis remain functional, chat returns clear "unavailable" message in `backend/app/services/chat_service.py`
 - [ ] T820 [P] No-XBRL-data handling — filings without XBRL data log warning, store available data, do not block text ingestion in `backend/app/ingestion/pipeline.py`
 - [ ] T821 [P] Budget monitoring runbook — document manual scale-to-zero procedure, gpt-4o-mini switch, Redis removal steps for when $50/month dev budget is at risk in `docs/runbooks/budget-breach.md` (Constitution IV, spec edge case)
-- [ ] T816 Run quickstart.md validation — all 6 scenarios pass
+- [ ] T816 Run quickstart.md validation — all 6 scenarios pass; additionally verify the OpenTelemetry → Application Insights pipeline works end-to-end: confirm structured JSON logs with `request_id` appear in App Insights after executing the quickstart scenarios (NFR-500, NFR-501)
 
 ---
 

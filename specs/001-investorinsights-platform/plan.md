@@ -805,12 +805,20 @@ development_overrides:
 ### Backend
 
 ```dockerfile
-FROM python:3.12-slim AS base
+# Stage 1: Builder — install build deps and compile wheels
+FROM python:3.12-slim AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libmupdf-dev curl && rm -rf /var/lib/apt/lists/*
+    build-essential libmupdf-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# Stage 2: Runner — minimal runtime image
+FROM python:3.12-slim AS runner
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libmupdf-dev curl && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /install /usr/local
+WORKDIR /app
 COPY . .
 RUN adduser --disabled-password --gecos "" appuser
 USER appuser
