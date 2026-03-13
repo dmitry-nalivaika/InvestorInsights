@@ -135,7 +135,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 3. **Given** the chat tab, **When** I send a message, **Then** tokens stream in real-time, sources are shown after completion, and I can browse past sessions.
 4. **Given** any loading operation, **When** in progress, **Then** appropriate loading indicators are shown.
 5. **Given** any error, **When** it occurs, **Then** a human-readable message with suggested action is displayed.
-6. **Given** the Settings page, **When** I view it, **Then** I see read-only display of current LLM, embedding, and ingestion configuration. (Note: V1 Settings is UI-only — no backend settings API. Configuration is managed via environment variables per plan.md Configuration Management.)
+6. **Given** the Settings page, **When** I view it, **Then** I see read-only display of current LLM, embedding, and ingestion configuration. (Note: V1 Settings is UI-only — no backend settings API. The frontend reads `NEXT_PUBLIC_*` build-time environment variables. Configuration is managed via environment variables per plan.md Configuration Management.)
 
 ---
 

@@ -711,8 +711,8 @@ pages:
     components: [CompanySelector (multi-select), ProfileSelector, ComparisonTable, RankingChart]
 
   /settings:
-    description: System configuration
-    components: [LLMSettings, EmbeddingSettings, IngestionSettings, APIKeyManagement]
+    description: System configuration (read-only V1 — sourced from NEXT_PUBLIC_* build-time env vars, no backend API)
+    components: [LLMSettings, EmbeddingSettings, IngestionSettings, APIKeyStatus]
 ```
 
 ### Chat Interface Specification

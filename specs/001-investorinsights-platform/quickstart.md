@@ -11,7 +11,7 @@ These scenarios verify the system works end-to-end after each implementation pha
 
 ---
 
-### Scenario 1: Foundation Boot (Phase 1)
+### Scenario 1: Foundation Boot (after Phases 1–3)
 
 **Validates**: Infrastructure, database, company CRUD, auth, health check.
 
@@ -49,7 +49,7 @@ These scenarios verify the system works end-to-end after each implementation pha
 
 ---
 
-### Scenario 2: Document Ingestion (Phase 2)
+### Scenario 2: Document Ingestion (after Phase 4)
 
 **Validates**: File upload, parsing, chunking, embedding, status tracking.
 
@@ -80,7 +80,7 @@ These scenarios verify the system works end-to-end after each implementation pha
 
 ---
 
-### Scenario 3: SEC EDGAR Integration (Phase 3)
+### Scenario 3: SEC EDGAR Integration (after Phase 4)
 
 **Validates**: Auto-fetch, XBRL extraction, financial data API.
 
@@ -113,7 +113,7 @@ These scenarios verify the system works end-to-end after each implementation pha
 
 ---
 
-### Scenario 4: RAG Chat (Phase 4)
+### Scenario 4: RAG Chat (after Phase 5)
 
 **Validates**: Chat session, retrieval, streaming, citations, history.
 
@@ -145,7 +145,7 @@ These scenarios verify the system works end-to-end after each implementation pha
 
 ---
 
-### Scenario 5: Financial Analysis (Phase 5)
+### Scenario 5: Financial Analysis (after Phase 6)
 
 **Validates**: Profile creation, analysis execution, scoring, trends, AI summary.
 
@@ -176,7 +176,7 @@ These scenarios verify the system works end-to-end after each implementation pha
 
 ---
 
-### Scenario 6: Full UI Smoke Test (Phase 6)
+### Scenario 6: Full UI Smoke Test (after Phase 9)
 
 **Validates**: Frontend renders all pages, streaming chat works in browser.
 

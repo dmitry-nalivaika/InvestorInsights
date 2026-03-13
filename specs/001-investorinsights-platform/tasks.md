@@ -53,6 +53,7 @@
 - [ ] T019 [P] SEC EDGAR base client (HTTP with token-bucket rate limiter enforcing ≤10 req/s per FR-206, User-Agent header) in `backend/app/clients/sec_client.py`
 - [ ] T020 [P] Azure OpenAI client wrapper (embeddings + chat) in `backend/app/clients/openai_client.py`
 - [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total, llm_tokens_total with labels type=prompt|completion and model), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total, celery_workers_active) in `backend/app/observability/metrics.py` (Constitution VII — placed in Foundational so all subsequent phases emit metrics from the start)
+- [ ] T815 [P] Circuit breaker implementation (Azure OpenAI, SEC EDGAR, Qdrant) with retry policies and fallback behaviour in `backend/app/clients/` (NFR-400 — placed in Foundational so all subsequent phases benefit from resilience from the start)
 
 **Checkpoint**: Foundation ready — user story implementation can now begin in parallel
 
@@ -257,7 +258,7 @@
 - [ ] T709 [P] [US7] Analysis tab — profile selector, run button, score card, criteria table, trend charts, AI summary in `frontend/src/components/analysis/`
 - [ ] T710 [P] [US7] Analysis profiles page — profile list, profile editor with criteria builder in `frontend/src/app/analysis/profiles/page.tsx`
 - [ ] T711 [P] [US7] Comparison page — multi-company selector, comparison table, ranking chart in `frontend/src/app/analysis/compare/page.tsx`
-- [ ] T712 [P] [US7] Settings page — LLM config, embedding config, ingestion config, API key status in `frontend/src/app/settings/page.tsx`
+- [ ] T712 [P] [US7] Settings page — read-only display of LLM config, embedding config, ingestion config, and API key status sourced from `NEXT_PUBLIC_*` build-time environment variables (no backend settings API in V1 per spec US7-AS6) in `frontend/src/app/settings/page.tsx`
 - [ ] T713 [US7] Responsive design (desktop-first, functional on tablet)
 - [ ] T714 [US7] Loading states, error states, empty states for all pages in `frontend/src/components/ui/`
 - [ ] T715 [P] [US7] Number formatting — `$394.3B`, `48.2%`, appropriate precision in `frontend/src/lib/format.ts`
@@ -290,7 +291,6 @@
 - [ ] T812 Request validation hardening, error message review, and database transaction boundary audit (NFR-203: multi-step mutations use transactions)
 - [ ] T813 [P] Log output review — no sensitive data, proper App Insights integration
 - [ ] T814 [P] Dependency security audit
-- [ ] T815 Circuit breaker implementation (Azure OpenAI, SEC EDGAR, Qdrant) in `backend/app/clients/`
 - [ ] T819 [P] Qdrant unavailable degradation — CRUD and financial analysis remain functional, chat returns clear "unavailable" message in `backend/app/services/chat_service.py`
 - [ ] T820 [P] No-XBRL-data handling — filings without XBRL data log warning, store available data, do not block text ingestion in `backend/app/ingestion/pipeline.py`
 - [ ] T821 [P] Budget monitoring runbook — document manual scale-to-zero procedure, gpt-4o-mini switch, Redis removal steps for when $50/month dev budget is at risk in `docs/runbooks/budget-breach.md` (Constitution IV, spec edge case)
