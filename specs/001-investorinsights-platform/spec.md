@@ -1,7 +1,7 @@
 # Feature Specification: InvestorInsights Platform
 
 **Feature Branch**: `001-investorinsights-platform`
-**Created**: 2025-01-XX
+**Created**: 2025-01-15
 **Status**: Draft
 **Input**: AI-powered public company analysis platform that stores/indexes SEC filings, provides a RAG chat agent per company, and automates quantitative financial analysis with user-defined scoring criteria. Deployed on Azure Cloud.
 
@@ -135,7 +135,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 3. **Given** the chat tab, **When** I send a message, **Then** tokens stream in real-time, sources are shown after completion, and I can browse past sessions.
 4. **Given** any loading operation, **When** in progress, **Then** appropriate loading indicators are shown.
 5. **Given** any error, **When** it occurs, **Then** a human-readable message with suggested action is displayed.
-6. **Given** the Settings page, **When** I view it, **Then** I see read-only display of current LLM, embedding, and ingestion configuration. (Note: V1 Settings is UI-only — no backend settings API. The frontend reads `NEXT_PUBLIC_*` build-time environment variables. Configuration is managed via environment variables per plan.md Configuration Management.)
+6. **Given** the Settings page, **When** I view it, **Then** I see read-only display of current LLM, embedding, and ingestion configuration: LLM model name, embedding model name, chunk size (tokens), chunk overlap, default top-K, score threshold, and API key status (configured/not configured). (Note: V1 Settings is UI-only — no backend settings API. The frontend reads `NEXT_PUBLIC_*` build-time environment variables. Configuration is managed via environment variables per plan.md Configuration Management.)
 
 ---
 
@@ -146,9 +146,9 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - What happens when Qdrant is unavailable? → Chat is unavailable. CRUD and financial analysis still work.
 - What happens when a filing has no XBRL data? → Financial extraction logs a warning, stores whatever is available, does not block text ingestion.
 - What happens with very large filings (300+ pages)? → System processes them within the 5-minute target; chunking handles any document size.
-- What happens when a custom formula divides by zero? → Returns null, criterion marked "no_data", not a crash.
+- What happens when a custom formula divides by zero? → Handled per FR-504: returns null, criterion marked "no_data", not a crash.
 - What happens when the $50/month dev budget is at risk? → Azure Budget alerts fire at 80% ($40) and 100% ($50). V1: Manual operator action per budget-breach runbook — scale-to-zero on all containers, switch to gpt-4o-mini, no managed Redis. V2: Automated budget monitoring and model downgrade.
-- What happens when Redis is unavailable? → Celery task dispatch may be delayed until the broker recovers; async task status polling (`GET /api/v1/tasks/{task_id}`) returns a "status unavailable" response. Underlying tasks still execute once the broker is back. CRUD, chat, and analysis remain functional (Redis is used as broker/cache, not primary data store).
+- What happens when Redis is unavailable? → Document uploads return 503 if the task broker cannot be reached at dispatch time; the document is saved with status `uploaded` and can be retried later (FR-307, FR-210). Async task status polling (`GET /api/v1/tasks/{task_id}`) returns a "status unavailable" response. Already-dispatched tasks execute once the broker recovers. CRUD, chat, and analysis remain functional (Redis is used as broker/cache, not primary data store).
 
 ---
 
@@ -161,12 +161,13 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-101**: System MUST auto-resolve company name, CIK, sector, and industry from SEC EDGAR
 - **FR-102**: System MUST enforce unique ticker constraint
 - **FR-103**: System MUST allow listing all companies with summary statistics (doc count, latest filing, readiness)
-- **FR-104**: System SHOULD allow updating company metadata
+- **FR-104**: System MUST allow updating company metadata
 - **FR-105**: System SHOULD allow deleting a company and ALL associated data with confirmation
 - **FR-106**: System SHOULD support searching/filtering companies by ticker, name, or sector
+- **FR-107**: System MUST support offset/limit pagination on all list endpoints, returning total count, limit, and offset in responses
 
 **Document Management**
-- **FR-200**: System MUST accept file uploads in PDF and HTML formats (max 50 MB)
+- **FR-200**: System MUST accept file uploads in PDF and HTML formats (max 50 MB raw uploaded file size)
 - **FR-201**: System MUST accept filing metadata: doc_type (10-K, 10-Q, 8-K, 20-F, DEF14A, OTHER), fiscal_year, fiscal_quarter, filing_date, period_end_date
 - **FR-202**: System MUST store uploaded files organized by company/type/year
 - **FR-203**: System MUST prevent duplicate uploads (same company + doc_type + year + quarter)
@@ -180,14 +181,14 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-211**: System SHOULD support deletion of individual documents with cascade cleanup
 
 **Ingestion Pipeline**
-- **FR-300**: System MUST chunk document sections into segments of 768 tokens (configurable within 512–1024) with 128-token overlap (tiktoken cl100k_base tokenizer)
+- **FR-300**: System MUST chunk document sections into chunks of 768 tokens (configurable within 512–1024) with 128-token overlap (tiktoken cl100k_base tokenizer)
 - **FR-301**: System MUST generate vector embeddings for each chunk
 - **FR-302**: System MUST store embeddings in a vector database in a company-scoped collection
 - **FR-303**: System MUST attach metadata to each vector (company_id, document_id, doc_type, fiscal_year, section_key, etc.)
 - **FR-304**: System MUST extract structured financial data from filings using SEC XBRL API
 - **FR-305**: System MUST map XBRL US-GAAP taxonomy tags to internal financial data schema
 - **FR-306**: System MUST store structured financial data as JSON, keyed by company + period
-- **FR-307**: System MUST process ingestion asynchronously (not blocking API requests)
+- **FR-307**: System MUST process ingestion asynchronously (not blocking API requests). If the task broker (Redis) is unreachable at dispatch time, the upload API MUST return 503 Service Unavailable with a descriptive error; the document record is saved with status `uploaded` for later retry via FR-210.
 - **FR-310**: System MUST handle malformed/corrupt files gracefully with clear error messages
 
 **Chat Agent**
@@ -220,7 +221,8 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-513**: System MUST provide a list of all available built-in formulas via API
 - **FR-514**: System SHOULD support comparing multiple companies against the same profile
 - **FR-515**: System SHOULD generate an AI narrative summary of analysis results
-- **FR-516**: System MUST support criteria categories: profitability, valuation (V1: custom formulas only — market price data is out of scope), growth, liquidity, solvency, efficiency, dividend, quality, custom
+- **FR-516**: System MUST support criteria categories: profitability, valuation, growth, liquidity, solvency, efficiency, dividend, quality, custom
+  > *V1 scope note*: Valuation category supports custom formulas only — market price data is out of scope for V1.
 - **FR-517**: System MUST support year-over-year growth formulas that reference previous period data
 
 **Data Export**
@@ -285,12 +287,12 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **SC-001**: An analyst can go from "new company registration" to "asking questions about its filings" within 15 minutes (for a company with 5 annual filings auto-fetched from EDGAR).
 - **SC-002**: Chat responses include at least one source citation (filing type, year, section) in at least 90% of answers where the retrieval step returns chunks above the score threshold (≥ 0.65 cosine similarity).
 - **SC-003**: The chat agent refuses out-of-scope requests (predictions, buy/sell) 100% of the time.
-- **SC-004**: A single 200-page 10-K is fully ingested (parsed, chunked, embedded, XBRL extracted) in under 5 minutes.
-- **SC-005**: API response time for non-streaming endpoints is under 500ms at p95.
-- **SC-006**: Time-to-first-token for chat streaming responses is under 2 seconds.
-- **SC-007**: Analysis of 30 criteria across 10 years of data completes in under 3 seconds.
-- **SC-008**: The system supports at least 100 companies with 50 documents each (5,000 total documents, 500K+ vectors).
-- **SC-009**: All analysis criteria pass/fail determinations are deterministic and reproducible for the same input data.
-- **SC-010**: Development environment Azure cost stays within the $50/month budget.
-- **SC-011**: Custom formula expressions evaluate correctly for valid input and return clear errors for invalid input.
-- **SC-012**: Ingestion pipeline is idempotent — re-running produces the same result.
+- **SC-004**: A single 200-page 10-K is fully ingested (parsed, chunked, embedded, XBRL extracted) in under 5 minutes (validates NFR-102).
+- **SC-005**: API response time for non-streaming endpoints is under 500ms at p95 (validates NFR-100).
+- **SC-006**: Time-to-first-token for chat streaming responses is under 2 seconds (validates NFR-101).
+- **SC-007**: Analysis of 30 criteria across 10 years of data completes in under 3 seconds (validates NFR-104).
+- **SC-008**: The system supports at least 100 companies with 50 documents each (5,000 total documents, 500K+ vectors) (validates NFR-200).
+- **SC-009**: All analysis criteria pass/fail determinations are deterministic and reproducible for the same input data (validates NFR-201).
+- **SC-010**: Development environment Azure cost stays within the $50/month budget (validates NFR-600).
+- **SC-011**: Custom formula expressions evaluate correctly for valid input and return clear errors for invalid input (validates FR-503, FR-512).
+- **SC-012**: Ingestion pipeline is idempotent — re-running produces the same result (validates NFR-202).

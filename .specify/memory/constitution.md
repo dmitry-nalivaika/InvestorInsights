@@ -71,4 +71,4 @@ duration. All operations carry a `request_id` for distributed tracing. No sensit
 - LLM prompt security: user input never appears in system prompt
 - Amendments require documentation, approval, and migration plan
 
-**Version**: 3.0.0 | **Ratified**: 2025-01-XX | **Last Amended**: 2025-01-XX
+**Version**: 3.0.0 | **Ratified**: 2025-01-15 | **Last Amended**: 2025-01-15

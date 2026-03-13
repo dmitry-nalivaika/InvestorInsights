@@ -1,6 +1,6 @@
 # Implementation Plan: InvestorInsights Platform
 
-**Branch**: `001-investorinsights-platform` | **Date**: 2025-01-XX | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-investorinsights-platform` | **Date**: 2025-01-15 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/001-investorinsights-platform/spec.md`
 **Status**: Draft
 
@@ -172,7 +172,9 @@ infra/
 | CompanyService | Company CRUD, CIK resolution from SEC EDGAR | Stateless |
 | DocumentService | File upload to Blob Storage, metadata CRUD, trigger ingestion | Stateless |
 | IngestionPipeline | Parse → split sections → chunk → embed → extract XBRL | Stateless (all state in DB) |
-| ChatService / CompanyChatAgent | RAG retrieval, prompt construction, LLM streaming | Stateless per request |
+| ChatService (`chat_service.py`) | Session/message CRUD, conversation history management | Stateless per request |
+| CompanyChatAgent (`chat_agent.py`) | System prompt construction, context assembly, source citation extraction, LLM streaming orchestration | Stateless per request |
+| RetrievalService (`retrieval_service.py`) | Query embedding, Qdrant semantic search, query expansion, metadata filtering | Stateless per request |
 | FinancialAnalysisEngine | Formula computation, threshold evaluation, trend detection, scoring | Stateless |
 | Celery Workers | Async task execution for ingestion and analysis | Stateless (pull from queue) |
 | Azure DB for PostgreSQL | Relational data (companies, documents, financials, profiles, results, chats) | Persistent (managed) |
@@ -344,15 +346,18 @@ Container Apps access secrets via system-assigned managed identity. No plaintext
 ## Ingestion Pipeline Detail
 
 ```text
-Stage 1: PARSE       Stage 2: SPLIT         Stage 3: EXTRACT     Stage 4: EMBED
+Stage 1: PARSE       Stage 2: SPLIT         Stage 3: EXTRACT     Stage 4: CHUNK & EMBED
 ┌──────────┐        ┌──────────────┐        ┌──────────────┐     ┌──────────────┐
 │ PDF→text │───────▶│ Section      │───────▶│ XBRL         │────▶│ Chunk text   │
-│ HTML→text│        │ Splitter     │        │ Financial    │     │ Embed chunks │
-│          │        │ (Items 1–15) │        │ Extraction   │     │ Store vectors│
+│ HTML→text│        │ Splitter     │        │ Financial    │     │ (768 tokens) │
+│          │        │ (Items 1–15) │        │ Extraction   │     │ Embed chunks │
+│          │        │              │        │              │     │ Store vectors│
 └──────────┘        └──────────────┘        └──────────────┘     └──────────────┘
 Status: uploaded     Status: parsing         (parallel with       Status: embedding
        →parsing             →parsed          stage 4)                    →ready
 ```
+
+> **Note**: Chunking (FR-300) is a sub-step within Stage 4 — text is chunked then embedded in sequence. The document status machine does not have a separate "chunking" status; chunking and embedding are grouped under the `embedding` status.
 
 ### Document Parsing
 
@@ -407,7 +412,7 @@ max_top_k: 50
 score_threshold: 0.65 (cosine similarity)
 query_expansion: LLM-based (generate 2–3 alternative queries, controllable via config toggle)
 context_budget: 12000 tokens max
-history_budget: 4000 tokens max (spec FR-405: default 10 exchanges, 4000 token budget)
+history_budget: 4000 tokens max, default 10 exchanges — whichever limit is reached first (spec FR-405)
 response_budget: 4096 tokens max
 ```
 

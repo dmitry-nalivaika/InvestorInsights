@@ -16,6 +16,19 @@
 - **Infra**: `infra/`
 - Paths based on plan.md Project Structure
 
+## Task ID Allocation
+
+- **T001–T015**: Phase 1 (Setup)
+- **T016–T020, T815, T817**: Phase 2 (Foundational)
+- **T100–T110**: Phase 3 — User Story 1 (Companies)
+- **T200–T313, T818**: Phase 4 — User Story 2 (Documents & Ingestion)
+- **T400–T415**: Phase 5 — User Story 3 (Chat)
+- **T500–T517**: Phase 6 — User Story 4 (Analysis)
+- **T600–T602**: Phase 7 — User Story 5 (Comparison)
+- **T700–T716**: Phase 9 — User Story 7 (Frontend)
+- **T800–T821**: Phase 10 (Polish & Cross-Cutting)
+- Suffix **a** (e.g., T413a) indicates a task added after initial allocation to avoid renumbering
+
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
@@ -169,6 +182,7 @@
 ### Tests for User Story 3
 
 - [ ] T413 [P] [US3] Unit tests — prompt builder, retrieval logic, context assembly, out-of-scope refusal (at least 5 prompt variants: future prediction, buy/sell recommendation, unrelated topic, personal opinion, external data request per SC-003) in `backend/tests/unit/test_chat_agent.py`
+- [ ] T413a [P] [US3] Unit tests — query expansion graceful degradation: verify fallback to original query when LLM call times out, when LLM returns error, and when circuit breaker is open; verify that query expansion failure does NOT block or delay the chat response (FR-409 fallback requirement) in `backend/tests/unit/test_query_expansion.py`
 - [ ] T414 [P] [US3] Integration tests — full chat flow (mocked LLM), assert source citations are present in responses for on-topic queries (SC-002 validation) in `backend/tests/integration/test_chat_api.py`
 
 **Checkpoint**: At this point, User Stories 1, 2, AND 3 should all work independently — core MVP complete
@@ -228,15 +242,9 @@
 
 ---
 
-## Phase 8: User Story 6 - View & Export Financial Data (Priority: P3)
+## ~~Phase 8: User Story 6 - View & Export Financial Data (Priority: P3)~~
 
-**Goal**: An analyst can view structured financial data in a table and export it to CSV.
-
-**Independent Test**: View AAPL financials → see revenue, net income, etc. across years → export CSV.
-
-> **Note**: Backend endpoints (T309, T310) were implemented in Phase 4 as part of US2 (tagged [US2/US6]). Frontend is covered by T706 (tagged [US6/US7]) in Phase 9.
-
-**Checkpoint**: Backend complete from Phase 4. Frontend in Phase 9.
+> **Merged**: Backend endpoints (T309, T310) are in Phase 4 (tagged [US2/US6]). Frontend is T706 in Phase 9 (tagged [US6/US7]). No standalone phase needed.
 
 ---
 
@@ -260,7 +268,7 @@
 - [ ] T709 [P] [US7] Analysis tab — profile selector, run button, score card, criteria table, trend charts, AI summary in `frontend/src/components/analysis/`
 - [ ] T710 [P] [US7] Analysis profiles page — profile list, profile editor with criteria builder in `frontend/src/app/analysis/profiles/page.tsx`
 - [ ] T711 [P] [US7] Comparison page — multi-company selector, comparison table, ranking chart in `frontend/src/app/analysis/compare/page.tsx`
-- [ ] T712 [P] [US7] Settings page — read-only display of LLM config, embedding config, ingestion config, and API key status sourced from `NEXT_PUBLIC_*` build-time environment variables (no backend settings API in V1 per spec US7-AS6) in `frontend/src/app/settings/page.tsx`
+- [ ] T712 [P] [US7] Settings page — read-only display of LLM model name, embedding model name, chunk size, chunk overlap, default top-K, score threshold, and API key status (configured/not configured), sourced from `NEXT_PUBLIC_*` build-time environment variables (no backend settings API in V1 per spec US7-AS6) in `frontend/src/app/settings/page.tsx`
 - [ ] T713 [US7] Responsive design (desktop-first, functional on tablet)
 - [ ] T714 [US7] Loading states, error states, empty states for all pages in `frontend/src/components/ui/`
 - [ ] T715 [P] [US7] Number formatting — `$394.3B`, `48.2%`, appropriate precision in `frontend/src/lib/format.ts`
