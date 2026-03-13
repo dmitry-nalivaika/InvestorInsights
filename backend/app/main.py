@@ -18,9 +18,11 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.middleware.request_id import RequestIDMiddleware
 from app.api.router import api_router
 from app.config import AppEnvironment, Settings, get_settings
 from app.db.session import dispose_engine, init_engine
+from app.observability.logging import setup_logging
 
 # ── Startup time tracking ────────────────────────────────────────
 _startup_time: float = 0.0
@@ -44,6 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings: Settings = get_settings()
 
     # ── Startup ──────────────────────────────────────────────────
+    setup_logging(settings)
     init_engine(settings)
     _startup_time = time.time()
 
@@ -87,8 +90,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     _configure_cors(app, settings)
 
     # ── Middleware (registered in reverse order — outermost first) ─
-    # Additional middleware (auth, error handler, request ID, logging)
-    # will be added in T007, T007a, T012, T013.
+    # Request ID must be outermost so all downstream middleware/handlers see it.
+    # Additional middleware (auth, error handler, logging) added in T012, T013.
+    app.add_middleware(RequestIDMiddleware)
 
     # ── Routers ──────────────────────────────────────────────────
     app.include_router(api_router)
