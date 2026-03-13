@@ -30,6 +30,7 @@
 - [ ] T005 FastAPI application skeleton with Uvicorn in `backend/app/main.py`, config loading
 - [ ] T006 [P] Pydantic `BaseSettings` configuration validation in `backend/app/config.py`
 - [ ] T007 [P] Structured logging setup — structlog + OpenTelemetry → Application Insights
+- [ ] T007a [P] Request ID middleware — generate or propagate `request_id` (UUID) on every request via ASGI middleware, inject into structlog context and all response headers (`X-Request-ID`), ensuring all log entries and downstream service calls carry the `request_id` for distributed tracing (NFR-500) in `backend/app/api/middleware/request_id.py`
 - [ ] T008 PostgreSQL schema + Alembic migration setup in `backend/alembic/versions/001_initial_schema.py`
 - [ ] T009 SQLAlchemy ORM models for all entities in `backend/app/models/`
 - [ ] T010 [P] Pydantic request/response schemas in `backend/app/schemas/`
@@ -160,7 +161,7 @@
 - [ ] T408 [US3] Conversation history management (last N exchanges, configurable, token budget) in `backend/app/services/chat_service.py`
 - [ ] T409 [P] [US3] Session title auto-generation (from first user message) in `backend/app/services/chat_service.py`
 - [ ] T410 [US3] Retrieval config support (top_k, score_threshold, doc_type/year/section filters) in `backend/app/services/retrieval_service.py`
-- [ ] T415 [US3] LLM-based query expansion — generate 2–3 alternative queries to improve retrieval recall, controllable via `query_expansion` boolean in retrieval config (default: true) in `backend/app/services/retrieval_service.py` (FR-409)
+- [ ] T415 [US3] LLM-based query expansion — generate 2–3 alternative queries, execute semantic search for each, union results with original query results, deduplicate by chunk_id, re-rank by max score across all queries; controllable via `query_expansion` boolean in retrieval config (default: true) in `backend/app/services/retrieval_service.py` (FR-409)
 - [ ] T411 [US3] No-results handling — inform user, suggest rephrasing in `backend/app/services/chat_agent.py`
 - [ ] T412 [US3] Out-of-scope refusal (predictions, buy/sell, unrelated topics) in `backend/app/services/chat_agent.py`
 
@@ -289,7 +290,7 @@
 - [ ] T809 [P] README.md — local dev setup, architecture overview
 - [ ] T810 [P] DEPLOYMENT.md — Azure deployment guide (Bicep, az CLI, secrets, verification)
 - [ ] T812 Request validation hardening, error message review, and database transaction boundary audit (NFR-203: multi-step mutations use transactions)
-- [ ] T813 [P] Log output review — no sensitive data, proper App Insights integration
+- [ ] T813 [P] Log output review — audit all log statements to ensure no sensitive data (API keys, file contents, full chat messages, connection strings) appears in logs; verify proper redaction filters in structlog pipeline; confirm App Insights integration exports structured JSON with `request_id` on every entry (NFR-503, NFR-500) in `backend/app/`
 - [ ] T814 [P] Dependency security audit
 - [ ] T819 [P] Qdrant unavailable degradation — CRUD and financial analysis remain functional, chat returns clear "unavailable" message in `backend/app/services/chat_service.py`
 - [ ] T820 [P] No-XBRL-data handling — filings without XBRL data log warning, store available data, do not block text ingestion in `backend/app/ingestion/pipeline.py`

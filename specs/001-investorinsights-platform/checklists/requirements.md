@@ -96,43 +96,39 @@
 - [ ] **NFR-102** 200-page 10-K ingestion < 5 minutes
 - [ ] **NFR-103** Vector search < 200ms (top-15)
 - [ ] **NFR-104** Analysis (30 criteria, 10 years) < 3 seconds
-- [ ] **NFR-106** Support 100 companies, 50 docs each (5,000 total)
-- [ ] **NFR-107** Support 500K+ vectors per company
 
-### Reliability
+### Scalability
 
-- [ ] **NFR-200** Ingestion pipeline is idempotent
-- [ ] **NFR-201** Failed steps retryable without data corruption
-- [ ] **NFR-202** Uploaded files preserved even if ingestion fails
-- [ ] **NFR-203** Multi-step mutations use database transactions
-- [ ] **NFR-204** Graceful degradation if LLM unavailable
-- [ ] **NFR-205** Graceful degradation if vector store unavailable
+- [ ] **NFR-200** Support at least 100 companies with 50 documents each (5,000 total documents, 500K+ vectors)
+
+### Data Integrity
+
+- [ ] **NFR-201** All analysis criteria pass/fail determinations MUST be deterministic and reproducible
+- [ ] **NFR-202** Ingestion pipeline MUST be idempotent — re-running produces the same result
+- [ ] **NFR-203** Multi-step mutations MUST use database transactions to ensure atomicity
 
 ### Security
 
-- [ ] **NFR-600** API requires authentication (API key)
-- [ ] **NFR-601** File uploads validated (type, size, magic bytes)
-- [ ] **NFR-602** All inputs sanitised (parameterised queries)
-- [ ] **NFR-603** LLM prompts constructed server-side only
-- [ ] **NFR-604** No secrets in logs or responses
-- [ ] **NFR-605** Configurable file upload size limit (default 50 MB)
-- [ ] **NFR-606** Rate limiting (100/min CRUD, 20/min chat)
+- [ ] **NFR-300** All endpoints except `/health` MUST require API key authentication
+- [ ] **NFR-301** User input MUST never appear in LLM system prompts
+- [ ] **NFR-302** File uploads MUST be validated via magic bytes (not just extension) and capped at 50 MB
 
-### Usability
+### Reliability
 
-- [ ] **NFR-400** Responsive web UI (desktop-first, tablet-functional)
-- [ ] **NFR-401** Streaming chat character-by-character
-- [ ] **NFR-402** Progress indicators for all loading states
-- [ ] **NFR-403** Human-readable error messages with suggested actions
-- [ ] **NFR-404** Financial figures formatted with precision (`$394.3B`, `48.2%`)
+- [ ] **NFR-400** External service failures (Azure OpenAI, SEC EDGAR, Qdrant) MUST NOT crash the application — circuit breakers and fallbacks MUST be implemented
+- [ ] **NFR-401** When Azure OpenAI is unavailable, CRUD operations and analysis (without AI summary) MUST still function
+- [ ] **NFR-402** When Qdrant is unavailable, CRUD operations and financial analysis MUST still function; chat returns a clear "unavailable" message
 
-### Maintainability
+### Observability
 
-- [ ] **NFR-500** Consistent code formatting (Ruff/Black, Prettier)
-- [ ] **NFR-501** Public functions have docstrings/JSDoc
-- [ ] **NFR-502** Schema changes via versioned migrations (Alembic)
-- [ ] **NFR-503** Environment-variable driven configuration (12-factor)
-- [ ] **NFR-504** All dependencies injected for testability
+- [ ] **NFR-500** All operations MUST carry a `request_id` for distributed tracing
+- [ ] **NFR-501** Structured logging (JSON) MUST be exported via OpenTelemetry to Azure Monitor / Application Insights
+- [ ] **NFR-502** Custom metrics MUST be emitted for ingestion throughput, LLM token usage, chat retrieval duration, and analysis duration
+- [ ] **NFR-503** No sensitive data (API keys, file contents, full chat messages) MUST appear in logs
+
+### Cost
+
+- [ ] **NFR-600** Development environment Azure cost MUST stay within the $50/month budget
 
 ---
 
