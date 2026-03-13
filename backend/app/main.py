@@ -8,9 +8,12 @@ Creates and configures the FastAPI app with:
 - OpenAPI metadata
 """
 
+from __future__ import annotations
+
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,7 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # ── App Factory ──────────────────────────────────────────────────
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Optional[Settings] = None) -> FastAPI:
     """
     Create and configure the FastAPI application.
 

@@ -5,7 +5,10 @@ Provides the async engine and session maker used by FastAPI dependencies
 and background workers.
 """
 
+from __future__ import annotations
+
 from collections.abc import AsyncGenerator
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -16,7 +19,7 @@ from sqlalchemy.ext.asyncio import (
 from app.config import Settings, get_settings
 
 
-def build_async_engine(settings: Settings | None = None):
+def build_async_engine(settings: Optional[Settings] = None):
     """Create an async SQLAlchemy engine from application settings."""
     if settings is None:
         settings = get_settings()
@@ -32,7 +35,7 @@ def build_async_engine(settings: Settings | None = None):
 
 
 def build_async_session_factory(
-    settings: Settings | None = None,
+    settings: Optional[Settings] = None,
 ) -> async_sessionmaker[AsyncSession]:
     """Create an async session factory bound to the engine."""
     engine = build_async_engine(settings)
@@ -45,7 +48,7 @@ def build_async_session_factory(
 
 # Module-level defaults — lazily initialised via create_app() lifespan
 _engine = None
-_async_session_factory: async_sessionmaker[AsyncSession] | None = None
+_async_session_factory: Optional[async_sessionmaker[AsyncSession]] = None
 
 
 def init_engine(settings: Settings) -> None:
