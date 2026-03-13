@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.db.session import get_async_session
+from app.clients.storage_client import StorageClient, get_storage_client
 
 # ── Settings ─────────────────────────────────────────────────────
 
@@ -36,3 +37,13 @@ async def get_db(
 
 
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
+
+# ── Object Storage ───────────────────────────────────────────────
+
+
+def get_storage() -> StorageClient:
+    """Return the global StorageClient singleton."""
+    return get_storage_client()
+
+
+StorageDep = Annotated[StorageClient, Depends(get_storage)]
