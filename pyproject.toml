@@ -68,6 +68,7 @@ warn_untyped_fields = true
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
+pythonpath = ["backend"]
 asyncio_mode = "auto"
 markers = [
     "unit: unit tests (no external dependencies)",
