@@ -1,0 +1,100 @@
+[project]
+name = "investorinsights-backend"
+version = "1.0.0"
+description = "AI-powered SEC filing analysis platform"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["backend/app", "backend/tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults (FastAPI Depends)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+exclude = ["alembic/", "tests/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "qdrant_client.*",
+    "azure.*",
+    "structlog.*",
+    "fitz.*",
+    "bs4.*",
+    "tiktoken.*",
+    "redis.*",
+]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+markers = [
+    "unit: unit tests (no external dependencies)",
+    "integration: integration tests (require Docker services)",
+    "e2e: end-to-end tests (require full stack)",
+    "slow: tests that take > 30 seconds",
+    "performance: performance/load tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:sqlalchemy.*",
+]
+timeout = 30
+timeout_method = "signal"
+
+[tool.coverage.run]
+source = ["backend/app"]
+omit = [
+    "backend/app/worker/*",
+    "backend/tests/*",
+    "backend/alembic/*",
+]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.",
+]
