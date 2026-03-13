@@ -9,7 +9,7 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 — Register & Browse Companies (Priority: P1)
+### User Story 1 - Register & Browse Companies (Priority: P1)
 
 As an analyst, I want to register a company by ticker symbol and see it in my tracked company list so I can begin uploading and analyzing its filings.
 
@@ -27,7 +27,7 @@ As an analyst, I want to register a company by ticker symbol and see it in my tr
 
 ---
 
-### User Story 2 — Upload & Ingest SEC Filings (Priority: P1)
+### User Story 2 - Upload & Ingest SEC Filings (Priority: P1)
 
 As an analyst, I want to upload SEC filings (PDF/HTML) or auto-fetch them from EDGAR so the system can parse, chunk, embed, and extract financial data — making them available for chat and analysis.
 
@@ -47,7 +47,7 @@ As an analyst, I want to upload SEC filings (PDF/HTML) or auto-fetch them from E
 
 ---
 
-### User Story 3 — Chat with AI About Company Filings (Priority: P1)
+### User Story 3 - Chat with AI About Company Filings (Priority: P1)
 
 As an analyst, I want to start a chat session scoped to a specific company and ask qualitative questions about its SEC filings, receiving answers grounded in the actual documents with source citations.
 
@@ -67,7 +67,7 @@ As an analyst, I want to start a chat session scoped to a specific company and a
 
 ---
 
-### User Story 4 — Score Companies with Custom Analysis Profiles (Priority: P2)
+### User Story 4 - Score Companies with Custom Analysis Profiles (Priority: P2)
 
 As an analyst, I want to create an analysis profile with custom financial criteria and run it against a company to see a scored report card with pass/fail per criterion, trends, and an AI narrative summary.
 
@@ -87,7 +87,7 @@ As an analyst, I want to create an analysis profile with custom financial criter
 
 ---
 
-### User Story 5 — Compare Companies Side by Side (Priority: P3)
+### User Story 5 - Compare Companies Side by Side (Priority: P3)
 
 As an analyst, I want to compare 2–10 companies against the same analysis profile to see a ranked comparison table.
 
@@ -102,7 +102,7 @@ As an analyst, I want to compare 2–10 companies against the same analysis prof
 
 ---
 
-### User Story 6 — View & Export Financial Data (Priority: P3)
+### User Story 6 - View & Export Financial Data (Priority: P3)
 
 As an analyst, I want to view structured financial data for a company in a table (metrics × years) and export it to CSV for external analysis.
 
@@ -117,7 +117,7 @@ As an analyst, I want to view structured financial data for a company in a table
 
 ---
 
-### User Story 7 — Full Web UI (Priority: P3)
+### User Story 7 - Full Web UI (Priority: P3)
 
 As an analyst, I want a modern, responsive web interface with sidebar navigation, company management, document tracking, chat, analysis dashboards, and settings.
 

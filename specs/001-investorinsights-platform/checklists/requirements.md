@@ -1,6 +1,8 @@
 # Requirements Checklist: InvestorInsights Platform
 
-**Spec**: [../spec.md](../spec.md)
+**Purpose**: Track implementation status of all functional, non-functional, and success criteria requirements
+**Created**: 2025-01-XX
+**Feature**: [spec.md](../spec.md)
 
 ---
 

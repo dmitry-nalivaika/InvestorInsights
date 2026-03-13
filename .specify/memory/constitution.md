@@ -64,8 +64,11 @@ duration. All operations carry a `request_id` for distributed tracing. No sensit
 
 ## Governance
 
-- Specification version: 3.0.0
+- Constitution supersedes all other practices
 - Any deviation from this constitution must be documented with rationale
 - Budget constraint (dev ≤ $50/month) overrides feature richness in development
 - SEC EDGAR rate limits (10 req/s) are a hard constraint — never bypass
 - LLM prompt security: user input never appears in system prompt
+- Amendments require documentation, approval, and migration plan
+
+**Version**: 3.0.0 | **Ratified**: 2025-01-XX | **Last Amended**: 2025-01-XX

@@ -1,7 +1,7 @@
 # Implementation Plan: InvestorInsights Platform
 
-**Spec**: [spec.md](./spec.md)
-**Created**: 2025-01-XX
+**Branch**: `001-investorinsights-platform` | **Date**: 2025-01-XX | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/001-investorinsights-platform/spec.md`
 **Status**: Draft
 
 ---
@@ -19,14 +19,21 @@ frontend is a Next.js web app with real-time chat streaming, data tables, and ch
 
 ## Technical Context
 
-- **Deployment target**: Microsoft Azure Cloud (managed services)
-- **Budget constraint**: Dev environment ≤ $50/month (~$22–34 estimated)
-- **Architecture pattern**: API + async worker + managed data services
-- **Key integrations**: SEC EDGAR API (free), Azure OpenAI (pay-per-token)
+**Language/Version**: Python 3.12+ (backend), TypeScript 5.4+ (frontend)
+**Primary Dependencies**: FastAPI 0.110+, SQLAlchemy 2.0+, Celery 5.3+, Next.js 14+, shadcn/ui
+**Storage**: Azure DB for PostgreSQL Flex (relational), Qdrant (vectors), Azure Blob Storage (files), Redis (cache/broker)
+**Testing**: pytest + pytest-asyncio (backend), Vitest + React Testing Library (frontend)
+**Target Platform**: Microsoft Azure Cloud (Container Apps, managed services)
+**Project Type**: web-service (API + async worker + frontend)
+**Performance Goals**: <500ms p95 API, <2s chat TTFT, <5min 10-K ingestion, <3s analysis (30 criteria × 10 years)
+**Constraints**: Dev environment ≤ $50/month (~$22–34 estimated), SEC EDGAR 10 req/s, single-user V1
+**Scale/Scope**: 100 companies, 5,000 documents, 500K+ vectors, 7 user stories, ~15 pages frontend
 
 ---
 
 ## Constitution Check
+
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 | Principle | How This Plan Aligns |
 |-----------|---------------------|
@@ -37,6 +44,69 @@ frontend is a Next.js web app with real-time chat streaming, data tables, and ch
 | Single User (V1) | API key auth; no multi-tenant complexity |
 | Offline-Capable | Raw files in Blob Storage; analysis works without re-fetching SEC |
 | Observability | structlog + OpenTelemetry → Application Insights; custom metrics for all pipelines |
+
+---
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/001-investorinsights-platform/
+├── spec.md              # Feature specification (user stories, requirements, success criteria)
+├── plan.md              # This file — architecture, tech stack, infrastructure, data flows
+├── research.md          # Key technical decisions with rationale
+├── data-model.md        # ERD, entities, enums, JSONB schemas, Qdrant config
+├── quickstart.md        # 6 validation scenarios with curl commands
+├── tasks.md             # 10-phase task breakdown (T001 → T816)
+├── contracts/
+│   └── api-spec.md      # Full REST API contract
+├── checklists/
+│   └── requirements.md  # FR/NFR/SC checkbox tracker
+└── reference/           # 9 reference files (formulas, XBRL mapping, DDL, etc.)
+```
+
+### Source Code (repository root)
+
+```text
+backend/
+├── app/
+│   ├── main.py
+│   ├── config.py
+│   ├── models/          # SQLAlchemy ORM models
+│   ├── schemas/         # Pydantic request/response schemas
+│   ├── api/             # FastAPI route handlers
+│   ├── services/        # Business logic layer
+│   ├── clients/         # External service clients (SEC, OpenAI, Qdrant, Blob)
+│   ├── ingestion/       # Pipeline stages (parse, split, chunk, embed, extract)
+│   ├── analysis/        # Formula engine, expression parser, scoring
+│   └── worker/          # Celery app, task definitions
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── fixtures/
+├── requirements.txt
+└── Dockerfile
+
+frontend/
+├── src/
+│   ├── app/             # Next.js App Router pages
+│   ├── components/      # React components (shadcn/ui based)
+│   ├── lib/             # API client, utilities
+│   └── types/           # TypeScript types
+├── tests/
+├── package.json
+└── Dockerfile
+
+infra/
+├── main.bicep
+├── parameters/          # dev.bicepparam, prod.bicepparam
+├── modules/             # Bicep modules (12 modules)
+├── dashboards/          # Azure Monitor dashboard JSON templates
+└── scripts/             # deploy.sh, destroy.sh, seed-keyvault.sh
+```
+
+**Structure Decision**: Web application pattern (frontend + backend + infra). Monorepo with three top-level directories. See [`reference/project-structure.md`](reference/project-structure.md) for the complete directory tree.
 
 ---
 
@@ -763,6 +833,16 @@ CMD ["node", "server.js"]
 
 ## Complexity Tracking
 
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| Custom expression parser DSL | Users need flexible formula definitions beyond built-in list | Hard-coding all possible formulas insufficient for custom criteria |
+| Celery + Redis (extra container) | Async ingestion requires robust task queue with retries/dead-letter | Simple background threads lack persistence, monitoring, retry logic |
+| Qdrant (extra container) | Per-company collection isolation, filtered HNSW search at 500K+ vectors | pgvector lacks metadata-filtered search performance and collection isolation |
+
+### Complexity Overview (informational)
+
 | Area | Complexity | Notes |
 |------|-----------|-------|
 | Ingestion pipeline (parse/split/chunk/embed) | High | Multiple file formats, section regex, XBRL mapping, async orchestration |
@@ -772,9 +852,3 @@ CMD ["node", "server.js"]
 | Frontend (Next.js) | Medium | Streaming chat UI, data tables, charts, 7+ pages |
 | Company/document CRUD | Low | Standard REST with file upload |
 | Auth (API key V1) | Low | Single key, constant-time comparison |
-
----
-
-## Project Structure
-
-See `reference/project-structure.md` for the full monorepo directory tree.
