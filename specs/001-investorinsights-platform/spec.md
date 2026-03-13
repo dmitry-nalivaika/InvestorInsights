@@ -199,7 +199,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-413**: System MUST handle the case where no relevant chunks are found
 
 **Financial Analysis Engine**
-- **FR-500**: System MUST provide a library of at least 20 built-in financial formulas
+- **FR-500**: System MUST provide a library of at least 25 built-in financial formulas
 - **FR-501**: System MUST allow creating analysis profiles containing 1–30 criteria
 - **FR-502**: System MUST support comparison operators: >, >=, <, <=, =, between, trend_up, trend_down
 - **FR-505**: System MUST compute each criterion's value across all available years within the lookback window

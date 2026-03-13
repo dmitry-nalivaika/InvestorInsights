@@ -48,19 +48,20 @@
 ### Chat Agent
 
 - [ ] **FR-400** System MUST provide company-scoped conversational AI agent
-- [ ] **FR-401** System MUST retrieve top-K chunks via semantic search
+- [ ] **FR-401** System MUST retrieve top-K chunks via semantic search (configurable top-K, default 15, max 50)
 - [ ] **FR-402** System MUST inject chunks as LLM context
 - [ ] **FR-403** System MUST stream responses via SSE
 - [ ] **FR-404** System MUST include source citations
-- [ ] **FR-405** System MUST maintain conversation history (configurable)
+- [ ] **FR-405** System MUST maintain conversation history (configurable limit, default 10 exchanges, 4000 token budget)
 - [ ] **FR-406** System MUST persist chat sessions and messages
 - [ ] **FR-407** System MUST refuse speculation beyond filing data
 - [ ] **FR-408** System MUST return source chunks with metadata
+- [ ] **FR-409** System SHOULD support LLM-based query expansion (2–3 alternative queries) to improve retrieval recall
 - [ ] **FR-413** System MUST handle no-results case
 
 ### Financial Analysis Engine
 
-- [ ] **FR-500** System MUST provide 20+ built-in financial formulas
+- [ ] **FR-500** System MUST provide 25+ built-in financial formulas
 - [ ] **FR-501** System MUST allow creating profiles with 1–30 criteria
 - [ ] **FR-502** System MUST support comparison operators (>, >=, <, <=, =, between, trend_up/down)
 - [ ] **FR-505** System MUST compute values across all years in lookback window

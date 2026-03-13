@@ -272,20 +272,23 @@
 - [ ] T800 [P] Rate limiting implementation (100 req/min CRUD, 20 req/min chat) in `backend/app/api/middleware/`
 - [ ] T801 E2E tests — company journey, upload+chat journey, analysis journey in `backend/tests/e2e/`
 - [ ] T802 [P] Performance testing (Locust) — ingestion throughput, vector search latency, chat TTFT in `backend/tests/performance/`
-- [ ] T803 Production Docker images — multi-stage, non-root user
+- [ ] T803 Production Docker images — verify multi-stage builds, non-root user, image size (checkpoint for T804 + T805)
 - [ ] T804 [P] Backend Dockerfile (Python 3.12-slim, PyMuPDF deps, non-root) in `backend/Dockerfile`
 - [ ] T805 [P] Frontend Dockerfile (Node 20-alpine, standalone build) in `frontend/Dockerfile`
 - [ ] T806 CI/CD pipeline — GitHub Actions → build → test → push ACR → deploy Container Apps in `.github/workflows/`
 - [ ] T807 [P] Azure Monitor alerts (API errors, ingestion stuck, LLM failures, DB issues, memory) in `infra/modules/`
 - [ ] T808 [P] Azure Portal dashboards (API performance, ingestion pipeline, LLM usage, infra health) in `infra/dashboards/`
-- [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total) in `backend/app/observability/metrics.py` (Constitution VII)
+- [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total, celery_workers_active) in `backend/app/observability/metrics.py` (Constitution VII)
 - [ ] T809 [P] README.md — local dev setup, architecture overview
 - [ ] T810 [P] DEPLOYMENT.md — Azure deployment guide (Bicep, az CLI, secrets, verification)
 - [ ] T812 Request validation hardening, error message review
 - [ ] T813 [P] Log output review — no sensitive data, proper App Insights integration
 - [ ] T814 [P] Dependency security audit
 - [ ] T815 Circuit breaker implementation (Azure OpenAI, SEC EDGAR, Qdrant) in `backend/app/clients/`
+- [ ] T819 [P] Qdrant unavailable degradation — CRUD and financial analysis remain functional, chat returns clear "unavailable" message in `backend/app/services/chat_service.py`
+- [ ] T820 [P] No-XBRL-data handling — filings without XBRL data log warning, store available data, do not block text ingestion in `backend/app/ingestion/pipeline.py`
 - [ ] T816 Run quickstart.md validation — all 6 scenarios pass
+- [ ] T818 Ingestion idempotency verification — re-running full pipeline on already-ingested document produces identical chunks, vectors, and financial data (SC-012) in `backend/tests/integration/test_idempotency.py`
 
 ---
 
