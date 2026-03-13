@@ -18,6 +18,7 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.middleware.error_handler import register_error_handlers
 from app.api.middleware.request_id import RequestIDMiddleware
 from app.api.router import api_router
 from app.config import AppEnvironment, Settings, get_settings
@@ -96,6 +97,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     # ── Routers ──────────────────────────────────────────────────
     app.include_router(api_router)
+
+    # ── Error handlers ───────────────────────────────────────────
+    register_error_handlers(app)
 
     return app
 

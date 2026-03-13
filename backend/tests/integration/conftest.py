@@ -70,6 +70,13 @@ def _register_health_stub(app: FastAPI) -> None:
     app.include_router(health_router)
 
 
+def _register_error_test_routes(app: FastAPI) -> None:
+    """Mount error-triggering test routes used by test_error_handler.py."""
+    from tests.integration.test_error_handler import _get_error_test_router
+
+    app.include_router(_get_error_test_router())
+
+
 # Register the protected stub NOW (module load time, before any
 # fixture calls create_app → include_router).
 _register_protected_stub()
@@ -80,6 +87,7 @@ def app() -> FastAPI:
     """Create the FastAPI application for integration testing."""
     application = create_app()
     _register_health_stub(application)
+    _register_error_test_routes(application)
     return application
 
 
