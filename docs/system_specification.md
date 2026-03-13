@@ -1,11 +1,15 @@
 ---
 document_type: system_specification
-version: "2.0.0"
+version: "3.0.0"
 status: draft
 created: 2025-01-XX
+updated: 2026-03-13
 target_audience: LLM-as-implementor (Claude Opus), human reviewers
+deployment_target: Microsoft Azure Cloud
 purpose: >
-  Complete specification for an AI-powered public company analysis platform.
+  Complete specification for an AI-powered public company analysis platform
+  deployed on Azure Cloud using managed services (Container Apps, Azure DB
+  for PostgreSQL, Azure Blob Storage, Azure Cache for Redis, Azure OpenAI).
   This document should contain ALL information necessary for an implementor
   to build the system end-to-end without further clarification.
 ---
@@ -76,11 +80,15 @@ purpose: >
     - [13.3 Data Infrastructure](#133-data-infrastructure)
     - [13.4 External Services](#134-external-services)
 14. [Infrastructure & Deployment](#14-infrastructure--deployment)
-    - [14.1 Docker Compose](#141-docker-compose-development--single-server-production)
-    - [14.2 Backend Dockerfile](#142-backend-dockerfile)
-    - [14.3 Frontend Dockerfile](#143-frontend-dockerfile)
-    - [14.4 Resource Requirements](#144-resource-requirements)
-    - [14.5 Backup Strategy](#145-backup-strategy)
+    - [14.1 Azure Architecture Overview](#141-azure-architecture-overview)
+    - [14.2 Azure Container Apps Configuration](#142-azure-container-apps-configuration)
+    - [14.3 Backend Dockerfile](#143-backend-dockerfile)
+    - [14.4 Frontend Dockerfile](#144-frontend-dockerfile)
+    - [14.5 Azure Resource SKUs & Sizing](#145-azure-resource-skus--sizing)
+    - [14.6 Secrets Management (Azure Key Vault)](#146-secrets-management-azure-key-vault)
+    - [14.7 Infrastructure as Code (Bicep)](#147-infrastructure-as-code-bicep)
+    - [14.8 Backup Strategy](#148-backup-strategy)
+    - [14.9 Networking](#149-networking)
 15. [Security](#15-security)
     - [15.1 Authentication (V1)](#151-authentication-v1)
     - [15.2 Input Validation](#152-input-validation)
@@ -89,7 +97,7 @@ purpose: >
 17. [Observability & Monitoring](#17-observability--monitoring)
     - [17.1 Structured Logging](#171-structured-logging)
     - [17.2 Metrics](#172-metrics)
-    - [17.3 Monitoring Dashboard (Optional)](#173-monitoring-dashboard-optional)
+    - [17.3 Monitoring & Alerting (Azure Monitor)](#173-monitoring--alerting-azure-monitor)
 18. [Error Handling & Resilience](#18-error-handling--resilience)
     - [18.1 Error Taxonomy](#181-error-taxonomy)
     - [18.2 Retry Policies](#182-retry-policies)
@@ -114,9 +122,9 @@ Individual investors and small fund analysts who evaluate public companies face 
 
 ### 1.2 Solution
 
-A self-hosted platform that:
+An Azure cloud-deployed platform that:
 
-- **Stores and indexes** SEC filings per company, organized by type and period.
+- **Stores and indexes** SEC filings per company, organized by type and period, using Azure-managed services.
 - **Provides an AI conversational agent** (per company) that has "read" all uploaded filings and can answer qualitative questions about the business, risks, strategy, competitive position, and changes over time — always grounding answers in specific filings.
 - **Automates quantitative analysis** by extracting structured financial data from filings, computing user-defined financial metrics/ratios, comparing them against user-defined thresholds, and producing a scored report card.
 
@@ -127,9 +135,9 @@ A self-hosted platform that:
 | Company-scoped | All data, chat, and analysis is organized per-company. The company is the central entity. |
 | User-defined criteria | The financial scoring system is fully configurable. Users define what to measure, how to compute it, what thresholds to apply, and how to weight each criterion. |
 | Grounded AI | The chat agent must ONLY answer based on uploaded filings. It must cite sources. It must refuse to speculate beyond the data. |
-| Self-hosted | The platform runs on user's own infrastructure (local Docker or cloud VPS). Only outbound calls are to LLM APIs and SEC EDGAR. |
-| Single user | V1 is designed for a single analyst. Authentication is simple (API key or basic auth). Multi-user is a future consideration. |
-| Offline-capable data | Once filings are ingested, all analysis and chat works without re-fetching from SEC. Only LLM inference requires external API calls. |
+| Azure cloud-deployed | The platform runs on Azure using managed services (Azure Container Apps, Azure Database for PostgreSQL, Azure Blob Storage, Azure Cache for Redis, Azure OpenAI). Only outbound calls beyond Azure are to SEC EDGAR. Infrastructure is provisioned via Bicep/Terraform IaC. |
+| Single user | V1 is designed for a single analyst. Authentication is simple (API key or basic auth). Multi-user is a future consideration. Upgrading to Azure AD/Entra ID is a V2 path. |
+| Offline-capable data | Once filings are ingested, all analysis and chat works without re-fetching from SEC. Only LLM inference requires Azure OpenAI API calls. |
 
 ---
 
@@ -385,7 +393,7 @@ A self-hosted platform that:
 | :-- | :-- | :-- |
 | FR-200 | System SHALL accept file uploads in PDF and HTML formats | Must |
 | FR-201 | System SHALL accept filing metadata: `doc_type` (10-K, 10-Q, 8-K), `fiscal_year`, `fiscal_quarter`, `filing_date`, `period_end_date` | Must |
-| FR-202 | System SHALL store uploaded files in object storage (S3/MinIO) organized by `company_id/doc_type/year/` | Must |
+| FR-202 | System SHALL store uploaded files in Azure Blob Storage organized by `company_id/doc_type/year/` | Must |
 | FR-203 | System SHALL prevent duplicate uploads (same company + doc_type + fiscal_year + fiscal_quarter) | Must |
 | FR-204 | System SHALL track document processing status: `uploaded → parsing → parsed → embedding → ready → error` | Must |
 | FR-205 | System SHALL support automatic fetching of filings from SEC EDGAR given a company CIK and year range | Must |
@@ -548,7 +556,7 @@ A self-hosted platform that:
 │                                                                              │
 │    ┌────────────────────────────────────────────────────────────────────┐     │
 │    │                    Next.js Web Application                        │     │
-│    │                                                                    │     │
+│    │                  (Azure Container Apps)                           │     │
 │    │  ┌──────────┐  ┌──────────────┐  ┌───────────┐  ┌────────────┐   │     │
 │    │  │ Company  │  │  Document    │  │   Chat    │  │  Analysis  │   │     │
 │    │  │ Manager  │  │  Manager     │  │ Interface │  │ Dashboard  │   │     │
@@ -559,7 +567,7 @@ A self-hosted platform that:
                                  │
                                  ▼
 ┌────────────────────────────────────────────────────────────────────────────────┐
-│                           API LAYER (FastAPI)                                  │
+│                 API LAYER (FastAPI — Azure Container Apps)                      │
 │                                                                                │
 │  ┌─────────────┐  ┌──────────────┐  ┌──────────┐  ┌────────────────────┐      │
 │  │  /companies │  │  /documents  │  │  /chat   │  │  /analysis         │      │
@@ -604,18 +612,21 @@ A self-hosted platform that:
                 │              │               │              │
                 ▼              ▼               ▼              ▼
 ┌────────────────────────────────────────────────────────────────────────────────┐
-│                            DATA LAYER                                          │
+│                      DATA LAYER (Azure Managed Services)                       │
 │                                                                                │
 │  ┌──────────────┐  ┌───────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │  PostgreSQL  │  │  Qdrant       │  │  MinIO / S3  │  │  Redis           │  │
-│  │              │  │  (Vector DB)  │  │  (Object     │  │  (Task Queue,    │  │
-│  │  • companies │  │               │  │   Storage)   │  │   Cache)         │  │
-│  │  • documents │  │  • per-company│  │              │  │                  │  │
-│  │  • sections  │  │    collections│  │  • raw PDFs/ │  │  • Celery broker │  │
-│  │  • chunks    │  │  • 3072-dim   │  │    HTML files│  │  • session cache │  │
-│  │  • financials│  │    vectors    │  │  • organized │  │  • rate limiting │  │
-│  │  • profiles  │  │  • payload    │  │    by company│  │                  │  │
-│  │  • criteria  │  │    metadata   │  │    /type/year│  │                  │  │
+│  │  Azure DB    │  │  Qdrant       │  │  Azure Blob  │  │  Azure Cache     │  │
+│  │  for         │  │  (on Azure    │  │  Storage     │  │  for Redis       │  │
+│  │  PostgreSQL  │  │   Container   │  │              │  │                  │  │
+│  │  Flex Server │  │   Apps)       │  │  • raw PDFs/ │  │  • Celery broker │  │
+│  │              │  │               │  │    HTML files│  │  • session cache │  │
+│  │  • companies │  │  • per-company│  │  • organized │  │  • rate limiting │  │
+│  │  • documents │  │    collections│  │    by company│  │                  │  │
+│  │  • sections  │  │  • 3072-dim   │  │    /type/year│  │                  │  │
+│  │  • chunks    │  │    vectors    │  │              │  │                  │  │
+│  │  • financials│  │  • payload    │  │              │  │                  │  │
+│  │  • profiles  │  │    metadata   │  │              │  │                  │  │
+│  │  • criteria  │  │               │  │              │  │                  │  │
 │  │  • results   │  │               │  │              │  │                  │  │
 │  │  • chats     │  │               │  │              │  │                  │  │
 │  └──────────────┘  └───────────────┘  └──────────────┘  └──────────────────┘  │
@@ -623,17 +634,19 @@ A self-hosted platform that:
 └────────────────────────────────────────────────────────────────────────────────┘
                 │                                    │
                 ▼                                    ▼
-┌────────────────────────────┐    ┌────────────────────────────────────────────┐
-│    EXTERNAL SERVICES       │    │         ASYNC WORKER POOL                  │
-│                            │    │                                            │
-│  • SEC EDGAR API           │    │  Celery Workers (configurable 1-10)        │
-│    (companyfacts, filings) │    │                                            │
-│  • OpenAI API              │    │  Queues:                                   │
-│    (embeddings, chat)      │    │    • ingestion (document processing)       │
-│  • (optional) Cohere API   │    │    • analysis  (report generation)         │
-│  • (optional) Anthropic    │    │    • sec_fetch (EDGAR downloading)         │
-│                            │    │                                            │
-└────────────────────────────┘    └────────────────────────────────────────────┘
+┌────────────────────────────────┐ ┌───────────────────────────────────────────┐
+│    EXTERNAL SERVICES           │ │     ASYNC WORKER (Azure Container Apps)   │
+│                                │ │                                           │
+│  • SEC EDGAR API               │ │  Celery Workers (configurable 1-10)      │
+│    (companyfacts, filings)     │ │                                           │
+│  • Azure OpenAI Service        │ │  Queues:                                 │
+│    (embeddings, chat)          │ │    • ingestion (document processing)     │
+│  • Azure Key Vault             │ │    • analysis  (report generation)       │
+│    (secrets management)        │ │    • sec_fetch (EDGAR downloading)       │
+│  • Azure Monitor               │ │                                           │
+│    (Application Insights)      │ │                                           │
+│                                │ │                                           │
+└────────────────────────────────┘ └───────────────────────────────────────────┘
 ```
 
 ### 6.2 Component Responsibilities
@@ -642,23 +655,25 @@ A self-hosted platform that:
 | :-- | :-- | :-- |
 | FastAPI App | HTTP request handling, validation, routing, SSE streaming, authentication | Stateless |
 | CompanyService | Company CRUD, CIK resolution from SEC | Stateless |
-| DocumentService | File upload to S3, metadata CRUD, triggering ingestion | Stateless |
+| DocumentService | File upload to Azure Blob Storage, metadata CRUD, triggering ingestion | Stateless |
 | IngestionPipeline | Document parsing, section splitting, chunking, embedding, financial extraction | Stateless (all state in DB) |
 | ChatService | Session management, message persistence | Stateless |
 | CompanyChatAgent | RAG retrieval, prompt construction, LLM interaction, streaming | Stateless per request (loads context fresh) |
 | FinancialAnalysisEngine | Formula computation, threshold evaluation, trend detection, scoring | Stateless |
 | Celery Workers | Async task execution for ingestion and analysis | Stateless (pull from queue) |
-| PostgreSQL | Relational data: companies, documents, financials, profiles, results, chat history | Persistent |
-| Qdrant | Vector storage and similarity search | Persistent |
-| MinIO/S3 | Raw file storage | Persistent |
-| Redis | Celery broker, caching, rate limiting | Semi-persistent |
+| Azure DB for PostgreSQL | Relational data: companies, documents, financials, profiles, results, chat history | Persistent (managed) |
+| Qdrant (Container Apps) | Vector storage and similarity search | Persistent (volume-mounted) |
+| Azure Blob Storage | Raw file storage | Persistent (managed) |
+| Azure Cache for Redis | Celery broker, caching, rate limiting | Semi-persistent (managed) |
+| Azure Key Vault | Secrets management (API keys, connection strings) | Persistent (managed) |
+| Azure Monitor / App Insights | Logging, metrics, tracing, alerting | Persistent (managed) |
 
 ### 6.3 Data Flow Diagrams
 
 #### 6.3.1 Document Upload & Ingestion Flow
 
 ```text
-User                  API                   Worker              S3      Postgres    Qdrant
+User                  API                   Worker              Blob    Postgres    Qdrant
   │                    │                      │                  │         │          │
   │── POST /documents ─▶│                     │                  │         │          │
   │   (file + metadata) │                     │                  │         │          │
@@ -685,7 +700,7 @@ User                  API                   Worker              S3      Postgres
   │                    │                      │   (embedding)     │         │          │
   │                    │                      │                  │         │          │
   │                    │                      │── chunk text      │         │          │
-  │                    │                      │── generate embeddings (OpenAI API)    │
+  │                    │                      │── generate embeddings (Azure OpenAI)  │
   │                    │                      │── upsert vectors ─────────────────────▶│
   │                    │                      │── save chunk records ─────▶│          │
   │                    │                      │                  │         │          │
@@ -696,7 +711,7 @@ User                  API                   Worker              S3      Postgres
 #### 6.3.2 Chat Flow
 
 ```text
-User                  API                   ChatAgent          Qdrant    OpenAI     Postgres
+User                  API                   ChatAgent          Qdrant  AzureOpenAI  Postgres
   │                    │                      │                  │         │          │
   │── POST /chat ─────▶│                     │                  │         │          │
   │   (message, session)│                     │                  │         │          │
@@ -721,7 +736,7 @@ User                  API                   ChatAgent          Qdrant    OpenAI 
 #### 6.3.3 Analysis Flow
 
 ```text
-User                  API              AnalysisEngine         Postgres    OpenAI
+User                  API              AnalysisEngine         Postgres  AzureOpenAI
   │                    │                      │                  │          │
   │── POST /analysis  ─▶│                     │                  │          │
   │   /run/{co}/{prof}  │                     │                  │          │
@@ -1461,12 +1476,15 @@ chunking_config:
 
 ```yaml
 embedding:
-  model: text-embedding-3-large      # OpenAI
+  # Primary: Azure OpenAI (recommended for Azure deployments)
+  provider: azure_openai              # azure_openai | openai
+  azure_deployment: text-embedding-3-large  # Azure OpenAI deployment name
+  model: text-embedding-3-large       # model (used with direct OpenAI fallback)
   dimensions: 3072
   batch_size: 64                      # chunks per API call
   max_retries: 3
   retry_delay: 1.0                    # seconds, with exponential backoff
-  rate_limit: 3000                    # requests per minute (OpenAI tier)
+  rate_limit: 3000                    # requests per minute
 
 # Alternative models (configurable):
 #  model: text-embedding-3-small     # 1536 dims, cheaper
@@ -1592,17 +1610,19 @@ Messages sent to the LLM:
 
 ```yaml
 llm:
-  provider: openai                # openai | anthropic
-  model: gpt-4o                  # primary model
-  fallback_model: gpt-4o-mini    # if primary fails or for cost savings
-  temperature: 0.2                # low temp for factual accuracy
+  # Primary: Azure OpenAI Service (recommended for Azure deployments)
+  provider: azure_openai              # azure_openai | openai | anthropic
+  azure_deployment: gpt-4o            # Azure OpenAI deployment name
+  model: gpt-4o                       # model (used with direct OpenAI fallback)
+  fallback_model: gpt-4o-mini         # if primary fails or for cost savings
+  temperature: 0.2                    # low temp for factual accuracy
   max_tokens: 4096
   streaming: true
-  timeout: 120                    # seconds
+  timeout: 120                        # seconds
   
   # Cost control:
-  max_monthly_spend: null         # optional dollar limit
-  log_token_usage: true           # track tokens per message for cost monitoring
+  max_monthly_spend: null             # optional dollar limit
+  log_token_usage: true               # track tokens per message for cost monitoring
 ```
 
 ---
@@ -1906,9 +1926,10 @@ chat_interface:
 | PDF Parser | PyMuPDF (fitz) | 1.24+ | Fast, reliable PDF text extraction |
 | HTML Parser | BeautifulSoup4 | 4.12+ | Standard HTML parsing |
 | Tokenizer | tiktoken | 0.7+ | OpenAI tokenizer for accurate chunk sizing |
-| LLM Client | openai (Python SDK) | 1.30+ | Official SDK, streaming support |
+| LLM Client | openai (Python SDK) | 1.30+ | Official SDK, streaming support; supports both direct OpenAI and Azure OpenAI endpoints |
 | Vector Client | qdrant-client | 1.9+ | Official Qdrant SDK, async support |
-| S3 Client | boto3 / aioboto3 | 1.34+ | S3/MinIO compatible |
+| Blob Storage Client | azure-storage-blob | 12.20+ | Azure Blob Storage SDK, async support |
+| Azure Identity | azure-identity | 1.16+ | Azure AD/Managed Identity authentication for Azure services |
 | Validation | Pydantic | 2.7+ | Data validation, serialization |
 | Testing | pytest + pytest-asyncio | 8.0+ | Standard Python testing |
 | Linting | Ruff | 0.4+ | Fast Python linter/formatter |
@@ -1932,210 +1953,162 @@ chat_interface:
 
 ### 13.3 Data Infrastructure
 
-| Component | Technology | Version | Justification |
+| Component | Technology | SKU / Version | Justification |
 | :-- | :-- | :-- | :-- |
-| Relational DB | PostgreSQL | 16+ | JSONB, robust, extensible |
-| Vector DB | Qdrant | 1.9+ | Purpose-built vector search, payload filtering, collections |
-| Object Storage | MinIO | latest | S3-compatible, self-hosted |
-| Cache/Broker | Redis | 7+ | Celery broker, caching, rate limiting |
+| Relational DB | Azure Database for PostgreSQL — Flexible Server | Burstable B2s (dev) / General Purpose D2ds_v5 (prod), PG 16 | Managed, auto-backups, HA, JSONB support, VNet integration |
+| Vector DB | Qdrant (on Azure Container Apps) | 1.9+, with persistent Azure Files volume | Purpose-built vector search, payload filtering, collections. Runs as a sidecar or dedicated Container App. |
+| Object Storage | Azure Blob Storage | Standard LRS (dev) / Standard ZRS (prod) | Managed, scalable, integrated with Azure identity, tiered storage |
+| Cache/Broker | Azure Cache for Redis | Basic C0 (dev) / Standard C1 (prod), Redis 7 | Managed, Celery broker, caching, rate limiting, VNet integration |
 
 ### 13.4 External Services
 
 | Service | Purpose | Required |
 | :-- | :-- | :-- |
-| OpenAI API | Embeddings (`text-embedding-3-large`) + Chat (`gpt-4o`) | Yes |
+| Azure OpenAI Service | Embeddings (`text-embedding-3-large`) + Chat (`gpt-4o`). Data stays within Azure tenant. | Yes (primary) |
+| OpenAI API (direct) | Fallback LLM/embedding provider if Azure OpenAI is unavailable or for dev | No (optional fallback) |
 | SEC EDGAR API | Company info, filing index, XBRL data | Yes (free, no key needed) |
+| Azure Key Vault | Secrets management (API keys, connection strings, certificates) | Yes |
+| Azure Monitor / Application Insights | Logging, metrics, distributed tracing, alerting | Yes |
+| Azure Container Registry | Private Docker image storage | Yes |
 | Anthropic API | Alternative LLM (Claude) | No (optional) |
 
 ---
 
 ## 14. Infrastructure & Deployment
 
-### 14.1 Docker Compose (Development & Single-Server Production)
+### 14.1 Azure Architecture Overview
 
-```yaml
-# docker-compose.yml
+The platform is deployed entirely on Microsoft Azure using managed services and containerized workloads. Infrastructure is provisioned via **Bicep** (primary) or Terraform (alternative) Infrastructure-as-Code templates stored in the `infra/` directory.
 
-version: "3.9"
-
-services:
-  # ── APPLICATION SERVICES ──────────────────────────────────
-
-  api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: >
-      uvicorn app.main:app 
-      --host 0.0.0.0 
-      --port 8000 
-      --workers 4 
-      --loop uvloop
-    ports:
-      - "${API_PORT:-8000}:8000"
-    env_file: .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      qdrant:
-        condition: service_started
-      minio:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-    volumes:
-      - ./backend:/app        # dev only, remove for production
-    restart: unless-stopped
-
-  worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: >
-      celery -A app.worker.celery_app worker
-      --loglevel=info
-      --concurrency=${WORKER_CONCURRENCY:-4}
-      --queues=ingestion,analysis,sec_fetch
-      --max-tasks-per-child=50
-    env_file: .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      qdrant:
-        condition: service_started
-      minio:
-        condition: service_healthy
-    volumes:
-      - ./backend:/app        # dev only
-    restart: unless-stopped
-
-  worker-monitor:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: >
-      celery -A app.worker.celery_app flower
-      --port=5555
-      --broker_api=redis://redis:6379/0
-    ports:
-      - "${FLOWER_PORT:-5555}:5555"
-    env_file: .env
-    depends_on:
-      - redis
-    restart: unless-stopped
-    profiles: ["monitoring"]     # only start with --profile monitoring
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://api:8000
-    depends_on:
-      - api
-    restart: unless-stopped
-
-  # ── DATA SERVICES ─────────────────────────────────────────
-
-  postgres:
-    image: postgres:16-alpine
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./backend/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
-    environment:
-      POSTGRES_DB: ${DB_NAME:-company_analysis}
-      POSTGRES_USER: ${DB_USER:-analyst}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-analyst} -d ${DB_NAME:-company_analysis}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  qdrant:
-    image: qdrant/qdrant:v1.9.7
-    volumes:
-      - qdrant_data:/qdrant/storage
-      - qdrant_snapshots:/qdrant/snapshots
-    environment:
-      QDRANT__SERVICE__GRPC_PORT: 6334
-      QDRANT__SERVICE__HTTP_PORT: 6333
-    ports:
-      - "${QDRANT_HTTP_PORT:-6333}:6333"
-      - "${QDRANT_GRPC_PORT:-6334}:6334"
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio_data:/data
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # Create default bucket on startup
-  minio-setup:
-    image: minio/mc:latest
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY};
-      mc mb --ignore-existing local/filings;
-      mc mb --ignore-existing local/exports;
-      exit 0;
-      "
-    environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?required}
-
-volumes:
-  pgdata:
-  qdrant_data:
-  qdrant_snapshots:
-  redis_data:
-  minio_data:
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Azure Resource Group: rg-investorinsights-{env}       │
+│                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │        Azure Container Apps Environment                          │   │
+│  │                                                                  │   │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌───────────┐ │   │
+│  │  │ api        │  │ worker     │  │ frontend   │  │ qdrant    │ │   │
+│  │  │ (FastAPI)  │  │ (Celery)   │  │ (Next.js)  │  │ (vector   │ │   │
+│  │  │ min: 1     │  │ min: 1     │  │ min: 1     │  │  DB)      │ │   │
+│  │  │ max: 5     │  │ max: 5     │  │ max: 3     │  │ replicas:1│ │   │
+│  │  └────────────┘  └────────────┘  └────────────┘  └───────────┘ │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  ┌──────────────┐ ┌──────────────┐ ┌───────────┐ ┌──────────────────┐  │
+│  │ Azure DB for │ │ Azure Blob   │ │ Azure     │ │ Azure Key Vault  │  │
+│  │ PostgreSQL   │ │ Storage      │ │ Cache for │ │                  │  │
+│  │ Flex Server  │ │ Account      │ │ Redis     │ │ • API keys       │  │
+│  │              │ │              │ │           │ │ • connection strs │  │
+│  │ • PG 16      │ │ • filings   │ │ • broker  │ │ • certificates   │  │
+│  │ • auto-backup│ │   container  │ │ • cache   │ │                  │  │
+│  │ • VNet       │ │ • exports   │ │ • rate lim│ │                  │  │
+│  └──────────────┘ │   container  │ └───────────┘ └──────────────────┘  │
+│                   └──────────────┘                                      │
+│  ┌──────────────┐ ┌──────────────────┐ ┌────────────────────────────┐  │
+│  │ Azure OpenAI │ │ Azure Monitor /  │ │ Azure Container Registry   │  │
+│  │ Service      │ │ App Insights     │ │                            │  │
+│  │              │ │                  │ │ • backend image            │  │
+│  │ • gpt-4o     │ │ • logs           │ │ • frontend image           │  │
+│  │ • embeddings │ │ • metrics        │ │                            │  │
+│  └──────────────┘ │ • traces         │ └────────────────────────────┘  │
+│                   │ • alerts         │                                  │
+│                   └──────────────────┘                                  │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 14.2 Backend Dockerfile
+### 14.2 Azure Container Apps Configuration
+
+```yaml
+# Container Apps are defined in Bicep (infra/modules/container-apps.bicep)
+# Below is the logical configuration for each app.
+
+api:
+  image: ${ACR_LOGIN_SERVER}/investorinsights-api:${IMAGE_TAG}
+  resources:
+    cpu: 1.0
+    memory: 2Gi
+  scale:
+    minReplicas: 1
+    maxReplicas: 5
+    rules:
+      - name: http-scaling
+        http:
+          metadata:
+            concurrentRequests: "50"
+  ingress:
+    external: true
+    targetPort: 8000
+    transport: http
+  env:
+    - name: APP_ENV
+      value: production
+    # Secrets injected from Key Vault via managed identity (see §14.6)
+  probes:
+    liveness:
+      httpGet:
+        path: /api/v1/health
+        port: 8000
+      periodSeconds: 30
+    readiness:
+      httpGet:
+        path: /api/v1/health
+        port: 8000
+      initialDelaySeconds: 10
+
+worker:
+  image: ${ACR_LOGIN_SERVER}/investorinsights-api:${IMAGE_TAG}
+  command: ["celery", "-A", "app.worker.celery_app", "worker",
+            "--loglevel=info", "--concurrency=4",
+            "--queues=ingestion,analysis,sec_fetch",
+            "--max-tasks-per-child=50"]
+  resources:
+    cpu: 2.0
+    memory: 4Gi
+  scale:
+    minReplicas: 1
+    maxReplicas: 5
+    rules:
+      - name: queue-scaling
+        custom:
+          type: redis
+          metadata:
+            host: ${REDIS_HOST}
+            listName: celery
+            listLength: "10"
+
+frontend:
+  image: ${ACR_LOGIN_SERVER}/investorinsights-frontend:${IMAGE_TAG}
+  resources:
+    cpu: 0.5
+    memory: 1Gi
+  scale:
+    minReplicas: 1
+    maxReplicas: 3
+  ingress:
+    external: true
+    targetPort: 3000
+    transport: http
+
+qdrant:
+  image: qdrant/qdrant:v1.9.7
+  resources:
+    cpu: 1.0
+    memory: 4Gi
+  scale:
+    minReplicas: 1
+    maxReplicas: 1      # single-instance, data on persistent volume
+  volumes:
+    - name: qdrant-data
+      storageType: AzureFile
+      storageName: qdrant-storage
+      mountPath: /qdrant/storage
+  ingress:
+    external: false      # internal only — accessed by api and worker
+    targetPort: 6333
+```
+
+### 14.3 Backend Dockerfile
 
 ```dockerfile
 FROM python:3.12-slim AS base
@@ -2165,7 +2138,7 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### 14.3 Frontend Dockerfile
+### 14.4 Frontend Dockerfile
 
 ```dockerfile
 FROM node:20-alpine AS builder
@@ -2191,65 +2164,211 @@ EXPOSE 3000
 CMD ["node", "server.js"]
 ```
 
-### 14.4 Resource Requirements
+### 14.5 Azure Resource SKUs & Sizing
 
 ```yaml
-minimum_resources:
+environments:
   development:
-    cpu: 4 cores
-    ram: 8 GB
-    disk: 20 GB
-  production_small:    # up to 50 companies
-    cpu: 4 cores
-    ram: 16 GB
-    disk: 100 GB (SSD recommended)
-  production_medium:   # up to 200 companies
-    cpu: 8 cores
-    ram: 32 GB
-    disk: 500 GB SSD
+    resource_group: rg-investorinsights-dev
+    location: eastus2
+    services:
+      postgresql:
+        sku: Burstable_B2s            # 2 vCores, 4 GB RAM
+        storage_gb: 32
+        backup_retention_days: 7
+        high_availability: false
+      redis:
+        sku: Basic_C0                  # 250 MB, shared
+      blob_storage:
+        sku: Standard_LRS             # locally redundant
+        access_tier: Hot
+      azure_openai:
+        sku: S0
+        deployments:
+          - name: gpt-4o
+            model: gpt-4o
+            capacity: 30              # 30K TPM
+          - name: text-embedding-3-large
+            model: text-embedding-3-large
+            capacity: 120             # 120K TPM
+      container_apps:
+        environment_sku: Consumption  # pay per use
+      container_registry:
+        sku: Basic
+      key_vault:
+        sku: Standard
+      log_analytics:
+        sku: PerGB2018
+        retention_days: 30
 
-per_service_allocation:
-  api:         { cpu: "1.0", memory: "1Gi" }
-  worker:      { cpu: "2.0", memory: "4Gi" }    # PDF parsing is memory-intensive
-  postgres:    { cpu: "1.0", memory: "2Gi" }
-  qdrant:      { cpu: "1.0", memory: "4Gi" }    # vectors in memory
-  redis:       { cpu: "0.25", memory: "256Mi" }
-  minio:       { cpu: "0.5", memory: "512Mi" }
-  frontend:    { cpu: "0.25", memory: "256Mi" }
+  production:
+    resource_group: rg-investorinsights-prod
+    location: eastus2
+    services:
+      postgresql:
+        sku: GeneralPurpose_D2ds_v5   # 2 vCores, 8 GB RAM
+        storage_gb: 128
+        backup_retention_days: 35
+        high_availability: true        # zone-redundant HA
+        geo_redundant_backup: true
+      redis:
+        sku: Standard_C1              # 1 GB, dedicated, SLA
+      blob_storage:
+        sku: Standard_ZRS             # zone-redundant
+        access_tier: Hot
+        soft_delete_days: 14
+        versioning: true
+      azure_openai:
+        sku: S0
+        deployments:
+          - name: gpt-4o
+            model: gpt-4o
+            capacity: 80              # 80K TPM
+          - name: gpt-4o-mini
+            model: gpt-4o-mini
+            capacity: 120             # 120K TPM (fallback)
+          - name: text-embedding-3-large
+            model: text-embedding-3-large
+            capacity: 350             # 350K TPM
+      container_apps:
+        environment_sku: Consumption
+      container_registry:
+        sku: Standard                 # geo-replication available
+      key_vault:
+        sku: Standard
+        soft_delete: true
+        purge_protection: true
+      log_analytics:
+        sku: PerGB2018
+        retention_days: 90
+
+estimated_monthly_cost:
+  development: ~$150–250/month
+  production: ~$400–700/month
+  # Excludes Azure OpenAI token usage (pay-per-use, varies with chat volume)
 ```
 
-### 14.5 Backup Strategy
+### 14.6 Secrets Management (Azure Key Vault)
+
+```yaml
+key_vault:
+  name: kv-investorinsights-{env}
+  
+  # Container Apps access secrets via managed identity (no passwords in config)
+  access_method: managed_identity      # system-assigned managed identity
+  
+  secrets:
+    - name: db-connection-string       # Azure PostgreSQL connection string
+    - name: redis-connection-string    # Azure Cache for Redis connection string
+    - name: blob-storage-connection    # Azure Blob Storage connection string
+    - name: azure-openai-api-key       # Azure OpenAI key
+    - name: azure-openai-endpoint      # Azure OpenAI endpoint URL
+    - name: api-auth-key               # Application API key for V1 auth
+    - name: sec-edgar-user-agent       # SEC EDGAR User-Agent header value
+    - name: qdrant-api-key             # Qdrant API key (if enabled)
+  
+  # Container Apps reference secrets from Key Vault:
+  # env var → Key Vault secret reference → resolved at container start
+  # No plaintext secrets in Container App configuration or IaC templates
+```
+
+### 14.7 Infrastructure as Code (Bicep)
+
+```
+infra/
+├── main.bicep                   # Orchestrator — deploys all modules
+├── main.bicepparam              # Parameter file per environment
+├── parameters/
+│   ├── dev.bicepparam
+│   └── prod.bicepparam
+├── modules/
+│   ├── resource-group.bicep
+│   ├── networking.bicep         # VNet, subnets, private endpoints
+│   ├── postgresql.bicep         # Azure DB for PostgreSQL Flex
+│   ├── redis.bicep              # Azure Cache for Redis
+│   ├── storage.bicep            # Azure Blob Storage account + containers
+│   ├── openai.bicep             # Azure OpenAI + model deployments
+│   ├── key-vault.bicep          # Azure Key Vault + secrets
+│   ├── container-registry.bicep # Azure Container Registry
+│   ├── log-analytics.bicep      # Log Analytics workspace
+│   ├── app-insights.bicep       # Application Insights
+│   └── container-apps.bicep     # Container Apps Environment + apps
+└── scripts/
+    ├── deploy.sh                # az deployment sub create wrapper
+    ├── destroy.sh               # tear down environment
+    └── seed-keyvault.sh         # initial secret population
+```
+
+### 14.8 Backup Strategy
 
 ```yaml
 backups:
   postgresql:
-    method: pg_dump
-    schedule: daily at 02:00 UTC
-    retention: 30 days
-    command: >
-      pg_dump -U analyst -d company_analysis 
-      --format=custom 
-      --file=/backups/pg_$(date +%Y%m%d_%H%M%S).dump
+    method: Azure-managed automated backups
+    schedule: Continuous (point-in-time restore available)
+    retention: 7 days (dev) / 35 days (prod)
+    geo_redundant: false (dev) / true (prod)
+    restore: Point-in-time restore via Azure Portal or CLI
+    # az postgres flexible-server restore --source-server ... --restore-point-in-time ...
+
+  blob_storage:
+    method: Azure-managed soft delete + versioning
+    soft_delete_retention: 14 days (prod)
+    versioning: enabled (prod)
+    additional: Azure Blob lifecycle management for archival
+    # Original files can be recovered from soft-delete or version history
 
   qdrant:
-    method: snapshot API
-    schedule: daily at 03:00 UTC
+    method: Qdrant snapshot API + Azure Files backup
+    schedule: Daily at 03:00 UTC via Container Apps job
     retention: 14 days
     command: >
       curl -X POST "http://qdrant:6333/collections/{name}/snapshots"
+    storage: Snapshots stored on Azure Files share (automatically backed up)
 
-  minio:
-    method: mc mirror
-    schedule: daily at 04:00 UTC
-    retention: 30 days
-    command: >
-      mc mirror local/filings /backups/minio/filings/
+  redis:
+    method: Azure-managed persistence (AOF/RDB based on SKU)
+    note: >
+      Redis data is transient (Celery broker, cache). Loss is recoverable —
+      in-flight tasks will be retried. No custom backup needed.
 
   strategy_notes:
-    - Postgres backup is most critical (all metadata, financial data, chat history)
-    - Qdrant can be rebuilt from chunks in Postgres (re-embed), but backup is faster
-    - MinIO stores original files; losing these means re-downloading from SEC
-    - All backups should be stored on a separate volume or remote storage
+    - PostgreSQL is the most critical store — Azure handles automated backups with PITR
+    - Blob Storage soft delete protects against accidental file deletion
+    - Qdrant can be rebuilt from chunks in PostgreSQL (re-embed), but snapshots are faster
+    - All backup operations leverage Azure-native capabilities — no custom cron jobs needed for DB/Blob
+    - For disaster recovery, PostgreSQL geo-redundant backup enables cross-region restore
+```
+
+### 14.9 Networking
+
+```yaml
+networking:
+  vnet:
+    name: vnet-investorinsights-{env}
+    address_space: "10.0.0.0/16"
+    subnets:
+      - name: snet-container-apps
+        address_prefix: "10.0.0.0/23"
+        delegation: Microsoft.App/environments
+      - name: snet-postgresql
+        address_prefix: "10.0.2.0/24"
+        delegation: Microsoft.DBforPostgreSQL/flexibleServers
+      - name: snet-private-endpoints
+        address_prefix: "10.0.3.0/24"
+
+  private_endpoints:
+    - Azure DB for PostgreSQL (private link)
+    - Azure Cache for Redis (private link)
+    - Azure Blob Storage (private link)
+    - Azure Key Vault (private link)
+    - Azure OpenAI (private link)
+
+  notes:
+    - All data services are on private endpoints (no public internet access)
+    - Container Apps Environment is VNet-integrated
+    - Only the frontend and API Container Apps have external ingress
+    - Qdrant is internal-only (no external ingress)
 ```
 
 ---
@@ -2262,14 +2381,16 @@ backups:
 authentication:
   method: API Key
   header: X-API-Key
-  storage: environment variable (API_KEY)
+  storage: Azure Key Vault secret (referenced by Container Apps via managed identity)
   validation: constant-time string comparison
   
-  # API key is set during deployment via .env
+  # API key is stored in Azure Key Vault during deployment
+  # Container Apps inject it as an environment variable from Key Vault reference
   # All API endpoints except /health require valid API key
-  # Frontend embeds API key in requests (acceptable for single-user self-hosted)
+  # Frontend embeds API key in requests (acceptable for single-user deployment)
   
-  # Future (V2): JWT with user accounts, OAuth2
+  # Future (V2): Azure AD / Entra ID with JWT, OAuth2, RBAC
+  # V2 would leverage Azure AD for both API auth and frontend SSO
 ```
 
 ### 15.2 Input Validation
@@ -2343,6 +2464,7 @@ The testing strategy follows a standard pyramid: **70% unit tests**, **25% integ
 ```yaml
 logging:
   library: structlog (Python) with JSON output
+  export: OpenTelemetry → Azure Monitor / Application Insights (in Azure); stdout JSON (local dev)
   log_level: INFO (configurable via LOG_LEVEL env var)
   
   standard_fields:
@@ -2399,11 +2521,18 @@ logging:
 
 ```yaml
 metrics:
-  library: prometheus_client (Python)
-  endpoint: /metrics (Prometheus scrape target)
+  # Primary: Azure Monitor / Application Insights (automatic for Azure deployments)
+  # OpenTelemetry SDK is used for custom metrics, exported to Application Insights
+  library: opentelemetry-sdk + azure-monitor-opentelemetry-exporter
   
+  # Application Insights auto-collects:
+  # - HTTP request rate, latency, failure rate (dependency tracking)
+  # - Dependency calls (PostgreSQL, Redis, Qdrant, Azure OpenAI)
+  # - Exception telemetry
+  # - Container Apps resource metrics (CPU, memory)
+  
+  # Custom metrics (exported via OpenTelemetry):
   counters:
-    - api_requests_total{method, path, status_code}
     - ingestion_documents_total{status}  # completed, failed
     - chat_messages_total{company_id}
     - analysis_runs_total{company_id, profile_id}
@@ -2412,7 +2541,6 @@ metrics:
     - embedding_api_calls_total{status}
   
   histograms:
-    - api_request_duration_seconds{method, path}
     - ingestion_duration_seconds{stage}   # parse, split, embed, total
     - chat_retrieval_duration_seconds
     - chat_llm_duration_seconds{model}
@@ -2425,33 +2553,89 @@ metrics:
     - vectors_total
     - celery_workers_active
     - celery_tasks_queued{queue}
+
+  # Prometheus /metrics endpoint is ALSO exposed for local dev / compatibility
+  # In Azure, Application Insights is the primary metrics sink
 ```
 
-### 17.3 Monitoring Dashboard (Optional)
+### 17.3 Monitoring & Alerting (Azure Monitor)
 
 ```yaml
-monitoring_stack:
-  profiles: ["monitoring"]  # optional docker-compose profile
+monitoring:
+  platform: Azure Monitor + Application Insights
 
-  services:
+  application_insights:
+    # Automatically collects telemetry from Container Apps
+    connection: via APPLICATIONINSIGHTS_CONNECTION_STRING env var
+    sdk: opentelemetry-sdk with azure-monitor-opentelemetry-exporter
+    features:
+      - Request/dependency tracking (auto-instrumented)
+      - Exception telemetry
+      - Custom events and metrics
+      - Live metrics stream
+      - Application map (service topology)
+      - Distributed tracing across api ↔ worker
+
+  log_analytics:
+    workspace: law-investorinsights-{env}
+    retention: 30 days (dev) / 90 days (prod)
+    queries:
+      # KQL queries for common investigations:
+      - name: "Failed ingestions (last 24h)"
+        query: >
+          AppTraces | where Message contains "ingestion.error"
+          | where TimeGenerated > ago(24h)
+          | project TimeGenerated, Properties.document_id, Properties.error
+      - name: "LLM latency p95"
+        query: >
+          AppDependencies | where Name contains "openai"
+          | summarize percentile(DurationMs, 95) by bin(TimeGenerated, 1h)
+
+  alerts:
+    - name: High API Error Rate
+      condition: requests/failed > 10% over 5 minutes
+      severity: 2
+      action: email notification
+
+    - name: Ingestion Pipeline Stuck
+      condition: custom metric ingestion_documents_total{status="error"} > 5 in 1 hour
+      severity: 2
+      action: email notification
+
+    - name: LLM API Failures
+      condition: dependency failures to Azure OpenAI > 5 in 5 minutes
+      severity: 1
+      action: email notification
+
+    - name: Database Connection Issues
+      condition: dependency failures to PostgreSQL > 3 in 5 minutes
+      severity: 1
+      action: email notification
+
+    - name: High Memory Usage
+      condition: Container Apps memory > 85% for 10 minutes
+      severity: 3
+      action: email notification
+
+  dashboards:
+    # Azure Portal dashboards (JSON templates in infra/dashboards/)
+    - name: API Performance
+      panels: [request rate, latency p50/p95/p99, error rate, status code distribution]
+    - name: Ingestion Pipeline
+      panels: [throughput, queue depth, failures, processing duration by stage]
+    - name: LLM & AI Usage
+      panels: [token consumption, cost estimates, latency, model breakdown]
+    - name: Infrastructure Health
+      panels: [CPU/memory per container, DB connections, Redis memory, Blob storage usage]
+
+  # For local development: Prometheus + Grafana via docker-compose.dev.yml
+  local_dev:
     prometheus:
-      image: prom/prometheus:latest
-      config: scrape api /metrics every 15s
+      scrape: api /metrics every 15s
       port: 9090
-
     grafana:
-      image: grafana/grafana:latest
       port: 3001
-      dashboards:
-        - API Performance (request rate, latency, errors)
-        - Ingestion Pipeline (throughput, queue depth, failures)
-        - LLM Usage (tokens, cost, latency)
-        - Vector Store (search latency, collection sizes)
-        - System Resources (CPU, memory per container)
-
     flower:
-      # Already defined in docker-compose
-      description: Celery task monitoring UI
       port: 5555
 ```
 
@@ -2493,9 +2677,10 @@ error_categories:
   external_service_errors:
     http_status: 502
     examples:
-      - OpenAI API failure
+      - Azure OpenAI API failure
       - SEC EDGAR unreachable
       - Qdrant connection lost
+      - Azure Blob Storage unreachable
     behavior: return error identifying the failing service, log full details
 
   rate_limit_errors:
@@ -2519,11 +2704,11 @@ error_categories:
 ```yaml
 retry_policies:
 
-  openai_api:
+  azure_openai_api:
     max_retries: 3
     backoff: exponential (1s, 2s, 4s)
     retry_on:
-      - 429 (rate limit)
+      - 429 (rate limit — Azure OpenAI returns Retry-After header)
       - 500 (server error)
       - 502 (bad gateway)
       - 503 (service unavailable)
@@ -2532,6 +2717,7 @@ retry_policies:
     give_up_on:
       - 400 (bad request — our fault)
       - 401 (invalid key)
+      - 404 (deployment not found)
 
   sec_edgar_api:
     max_retries: 5
@@ -2562,7 +2748,7 @@ retry_policies:
 ```yaml
 circuit_breakers:
 
-  openai:
+  azure_openai:
     failure_threshold: 5          # consecutive failures to trip
     recovery_timeout: 60          # seconds before half-open
     half_open_max_calls: 2        # test calls in half-open state
@@ -2570,6 +2756,7 @@ circuit_breakers:
     when_open:
       chat: return error "AI service temporarily unavailable"
       embeddings: queue ingestion tasks for later retry
+      fallback: if direct OpenAI key is configured, attempt fallback
 
   sec_edgar:
     failure_threshold: 10
@@ -2592,50 +2779,54 @@ circuit_breakers:
 
 ### 19.1 Environment Variables
 
+In Azure deployment, secrets (marked with 🔒) are stored in **Azure Key Vault** and injected into Container Apps via managed identity secret references. Non-secret configuration is set directly on Container App environment variables or via Azure App Configuration.
+
+For **local development**, a `.env` file is used with Docker Compose (see `docker-compose.dev.yml`).
+
 ```bash
 # ================================================================
-# .env.example — Copy to .env and fill in values
+# .env.example — Local development configuration
+# In Azure: secrets come from Key Vault, config from Container App settings
 # ================================================================
 
 # ── Application ──────────────────────────────────────────────────
-APP_NAME=company-analysis-platform
+APP_NAME=investorinsights
 APP_VERSION=1.0.0
 APP_ENV=development                     # development | staging | production
 LOG_LEVEL=INFO                          # DEBUG | INFO | WARNING | ERROR
-API_KEY=your-secret-api-key-here        # authentication key for API access
+API_KEY=your-secret-api-key-here        # 🔒 Key Vault in Azure
 
-# ── Database (PostgreSQL) ────────────────────────────────────────
-DB_HOST=postgres
+# ── Database (Azure Database for PostgreSQL Flexible Server) ─────
+DB_HOST=localhost                        # Azure: {server}.postgres.database.azure.com
 DB_PORT=5432
 DB_NAME=company_analysis
-DB_USER=analyst
-DB_PASSWORD=change-this-in-production
+DB_USER=analyst                          # Azure: {admin}@{server}
+DB_PASSWORD=change-this-in-production    # 🔒 Key Vault in Azure
 DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 DB_POOL_SIZE=10                         # connection pool size
 DB_MAX_OVERFLOW=20                      # max overflow connections
+DB_SSL_MODE=prefer                      # Azure: require (SSL enforced)
 
-# ── Vector Store (Qdrant) ────────────────────────────────────────
-QDRANT_HOST=qdrant
+# ── Vector Store (Qdrant — on Container Apps in Azure) ───────────
+QDRANT_HOST=localhost                    # Azure: internal Container App FQDN
 QDRANT_HTTP_PORT=6333
 QDRANT_GRPC_PORT=6334
 QDRANT_URL=http://${QDRANT_HOST}:${QDRANT_HTTP_PORT}
-QDRANT_API_KEY=                         # optional, for Qdrant Cloud
+QDRANT_API_KEY=                         # 🔒 Key Vault in Azure (optional)
 QDRANT_COLLECTION_PREFIX=company_       # prefix for per-company collections
 
-# ── Object Storage (MinIO/S3) ────────────────────────────────────
-MINIO_ENDPOINT=minio:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=change-this-in-production
-MINIO_SECURE=false                      # true for HTTPS (production S3)
-MINIO_BUCKET_FILINGS=filings
-MINIO_BUCKET_EXPORTS=exports
-# For AWS S3 instead of MinIO:
-# S3_REGION=us-east-1
-# AWS_ACCESS_KEY_ID=...
-# AWS_SECRET_ACCESS_KEY=...
+# ── Object Storage (Azure Blob Storage) ──────────────────────────
+AZURE_STORAGE_CONNECTION_STRING=        # 🔒 Key Vault in Azure
+AZURE_STORAGE_ACCOUNT_NAME=             # Azure storage account name
+AZURE_STORAGE_CONTAINER_FILINGS=filings
+AZURE_STORAGE_CONTAINER_EXPORTS=exports
+# For local dev with Azurite (Azure Storage emulator):
+# AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=...;BlobEndpoint=http://azurite:10000/devstoreaccount1;
 
-# ── Redis ────────────────────────────────────────────────────────
-REDIS_URL=redis://redis:6379/0
+# ── Redis (Azure Cache for Redis) ────────────────────────────────
+REDIS_URL=redis://localhost:6379/0      # Azure: rediss://{name}.redis.cache.windows.net:6380
+REDIS_PASSWORD=                         # 🔒 Key Vault in Azure
+REDIS_SSL=false                         # Azure: true (TLS enforced)
 REDIS_MAX_CONNECTIONS=20
 
 # ── Celery Workers ───────────────────────────────────────────────
@@ -2645,10 +2836,20 @@ WORKER_CONCURRENCY=4                    # number of concurrent worker processes
 CELERY_TASK_TIME_LIMIT=600              # hard time limit per task (seconds)
 CELERY_TASK_SOFT_TIME_LIMIT=540         # soft limit (raises exception)
 
-# ── OpenAI ───────────────────────────────────────────────────────
-OPENAI_API_KEY=sk-your-openai-key-here
-OPENAI_ORG_ID=                          # optional organization ID
-LLM_MODEL=gpt-4o                        # chat model
+# ── Azure OpenAI (primary LLM provider) ─────────────────────────
+LLM_PROVIDER=azure_openai               # azure_openai | openai | anthropic
+AZURE_OPENAI_API_KEY=                    # 🔒 Key Vault in Azure
+AZURE_OPENAI_ENDPOINT=https://{name}.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2024-10-21
+AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o     # Azure deployment name for chat
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-large  # deployment for embeddings
+
+# ── OpenAI Direct (optional fallback) ────────────────────────────
+# OPENAI_API_KEY=sk-your-openai-key-here  # 🔒 Key Vault in Azure
+# OPENAI_ORG_ID=                           # optional organization ID
+
+# ── LLM Configuration ───────────────────────────────────────────
+LLM_MODEL=gpt-4o                        # model name
 LLM_FALLBACK_MODEL=gpt-4o-mini          # fallback if primary fails
 LLM_TEMPERATURE=0.2
 LLM_MAX_TOKENS=4096
@@ -2659,7 +2860,7 @@ EMBEDDING_BATCH_SIZE=64
 
 # ── (Optional) Anthropic ────────────────────────────────────────
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
-# LLM_PROVIDER=anthropic                # switch provider
+# LLM_PROVIDER=anthropic
 # LLM_MODEL=claude-sonnet-4-20250514
 
 # ── RAG Configuration ───────────────────────────────────────────
@@ -2675,7 +2876,7 @@ CHUNK_OVERLAP=128                       # overlap tokens
 MAX_UPLOAD_SIZE_MB=50                   # max file upload size
 
 # ── SEC EDGAR ────────────────────────────────────────────────────
-SEC_EDGAR_USER_AGENT=CompanyAnalysis/1.0 (your-email@example.com)
+SEC_EDGAR_USER_AGENT=InvestorInsights/1.0 (your-email@example.com)
 SEC_EDGAR_RATE_LIMIT=10                 # max requests per second
 SEC_EDGAR_BASE_URL=https://data.sec.gov
 
@@ -2686,20 +2887,21 @@ API_WORKERS=4
 API_RATE_LIMIT_CRUD=100                 # requests per minute
 API_RATE_LIMIT_CHAT=20                  # requests per minute
 
-# ── Frontend ─────────────────────────────────────────────────────
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_APP_NAME=Company Analysis Platform
+# ── Azure Monitor / Application Insights ─────────────────────────
+APPLICATIONINSIGHTS_CONNECTION_STRING=   # Azure: auto-set by Container Apps
+OTEL_SERVICE_NAME=investorinsights-api
 
-# ── Ports (for docker-compose) ───────────────────────────────────
+# ── Frontend ─────────────────────────────────────────────────────
+NEXT_PUBLIC_API_URL=http://localhost:8000  # Azure: https://api.{env}.investorinsights.io
+NEXT_PUBLIC_APP_NAME=InvestorInsights
+
+# ── Local Dev Ports (for docker-compose.dev.yml) ─────────────────
 FRONTEND_PORT=3000
 API_EXTERNAL_PORT=8000
 DB_EXTERNAL_PORT=5432
 QDRANT_EXTERNAL_HTTP_PORT=6333
 QDRANT_EXTERNAL_GRPC_PORT=6334
 REDIS_EXTERNAL_PORT=6379
-MINIO_API_PORT=9000
-MINIO_CONSOLE_PORT=9001
-FLOWER_PORT=5555
 ```
 
 ### 19.2 Configuration Validation
@@ -2708,14 +2910,20 @@ FLOWER_PORT=5555
 # On application startup, validate ALL required configuration:
 
 class AppConfig(BaseSettings):
-    """Validated application configuration loaded from environment."""
+    """Validated application configuration loaded from environment.
+    
+    In Azure: env vars are injected from Key Vault secret references
+    and Container App configuration. No .env file is used.
+    
+    In local dev: loaded from .env file via Pydantic.
+    """
     
     # All fields validated via Pydantic
     # Missing required fields → startup failure with clear error message
     # Invalid values → startup failure with validation details
     
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=".env",                # only used in local dev
         env_file_encoding="utf-8",
         case_sensitive=False,
     )
@@ -2723,10 +2931,13 @@ class AppConfig(BaseSettings):
     # Startup validation:
     # 1. All required env vars present
     # 2. DATABASE_URL is valid connection string
-    # 3. OPENAI_API_KEY starts with "sk-"
-    # 4. SEC_EDGAR_USER_AGENT contains email address
-    # 5. Numeric ranges valid (CHUNK_SIZE > 0, etc.)
-    # 6. Connectivity check: ping DB, Redis, Qdrant, MinIO on startup
+    # 3. LLM_PROVIDER is valid ("azure_openai", "openai", "anthropic")
+    # 4. If azure_openai: AZURE_OPENAI_ENDPOINT and deployment names present
+    # 5. If openai: OPENAI_API_KEY starts with "sk-"
+    # 6. SEC_EDGAR_USER_AGENT contains email address
+    # 7. Numeric ranges valid (CHUNK_SIZE > 0, etc.)
+    # 8. Connectivity check: ping DB, Redis, Qdrant, Azure Blob on startup
+    # 9. If Azure: validate managed identity can access Key Vault
 ```
 
 ---
@@ -2736,30 +2947,33 @@ class AppConfig(BaseSettings):
 ### Phase 1: Foundation (Core Infrastructure)
 
 **Milestone:** "System boots up and stores data"
-**Duration estimate:** 3–5 days
+**Duration estimate:** 4–6 days
 
 **Deliverables:**
 
 - Project scaffolding (monorepo structure)
-- Docker Compose with all services
+- Azure infrastructure provisioning via Bicep IaC:
+  - Resource Group, VNet, Azure DB for PostgreSQL, Azure Cache for Redis, Azure Blob Storage, Azure Key Vault, Azure Container Registry, Log Analytics + App Insights, Azure OpenAI Service
+- Docker Compose for local development (with Azurite, local PostgreSQL, Redis, Qdrant)
 - FastAPI application skeleton with health check
 - PostgreSQL schema + Alembic migrations
 - Pydantic models for all entities
 - Company CRUD API (create, list, get, update, delete)
-- MinIO integration (bucket creation, file upload/download)
-- Configuration management (`.env` loading, validation)
-- Authentication middleware (API key)
+- Azure Blob Storage integration (container creation, file upload/download via `azure-storage-blob`)
+- Configuration management (`.env` loading for local, Key Vault references for Azure)
+- Authentication middleware (API key from Key Vault)
 - Error handling middleware
-- Structured logging setup
+- Structured logging setup (structlog + OpenTelemetry → Application Insights)
 - Unit tests for company service
 - Integration tests for company API
 
 **Verification:**
 
-- `docker compose up` creates all services
+- `docker compose -f docker-compose.dev.yml up` creates all local services
+- `az deployment sub create --template-file infra/main.bicep` provisions Azure resources
 - `GET /health` returns healthy status
 - `POST/GET/PUT/DELETE /companies` works
-- Alembic migrations run cleanly
+- Alembic migrations run cleanly against Azure PostgreSQL
 
 ---
 
@@ -2771,14 +2985,14 @@ class AppConfig(BaseSettings):
 **Deliverables:**
 
 - Document upload API (multipart file handling)
-- File storage in MinIO
+- File storage in Azure Blob Storage
 - PDF text extraction (PyMuPDF)
 - HTML text extraction (BeautifulSoup)
 - Text cleaning and normalization
 - Section splitter for 10-K and 10-Q
 - Text chunker with overlap
 - Qdrant collection management (create per company)
-- OpenAI embedding integration
+- Azure OpenAI embedding integration
 - Vector upsert to Qdrant
 - Celery worker setup with ingestion queue
 - Document status tracking (state machine)
@@ -2839,7 +3053,7 @@ class AppConfig(BaseSettings):
 - Metadata-filtered search (by year, doc type, section)
 - System prompt builder (company-specific)
 - Context assembly (retrieved chunks + history)
-- OpenAI chat completion with streaming
+- Azure OpenAI chat completion with streaming (with direct OpenAI fallback)
 - SSE endpoint for streaming responses
 - Source citation extraction and formatting
 - Conversation history management (token budget)
@@ -2929,33 +3143,38 @@ class AppConfig(BaseSettings):
 
 ### Phase 7: Polish & Production Readiness
 
-**Milestone:** "System is production-ready for self-hosted deployment"
-**Duration estimate:** 3–5 days
+**Milestone:** "System is production-ready for Azure Cloud deployment"
+**Duration estimate:** 4–6 days
 
 **Deliverables:**
 
 - E2E tests for critical journeys
 - Performance testing and optimization
-- Production Docker images (multi-stage, non-root)
-- Production `docker-compose.yml`
-- Backup scripts
-- `README.md` with setup instructions
-- `DEPLOYMENT.md` with production deployment guide
+- Production Docker images (multi-stage, non-root) pushed to Azure Container Registry
+- Azure Container Apps deployment configuration (all apps)
+- Bicep IaC validation and deployment pipeline (GitHub Actions → Azure)
+- Azure Monitor alerts and dashboards configured
+- `README.md` with setup instructions (local dev + Azure deployment)
+- `DEPLOYMENT.md` with Azure deployment guide (Bicep, az CLI commands, secrets setup)
 - Default analysis profile (Value Investor template)
 - Seed data script (creates sample profile)
 - Rate limiting implementation
 - Request validation hardening
 - Error message review (user-friendly)
-- Log output review (no sensitive data)
+- Log output review (no sensitive data, proper Application Insights integration)
 - Dependency audit (security)
 - Documentation: API reference (auto-generated from FastAPI)
+- CI/CD pipeline: GitHub Actions → build images → push to ACR → deploy to Container Apps
 
 **Verification:**
 
-- Fresh clone → `docker compose up` → fully functional system
-- All tests pass in CI
+- `az deployment sub create` provisions all Azure resources from scratch
+- Images build and push to ACR
+- Container Apps deploy and pass health checks
+- All tests pass in CI (GitHub Actions)
 - No security warnings in dependency audit
-- Backup and restore cycle works
+- Azure-managed backup verified (PostgreSQL PITR, Blob soft delete)
+- Azure Monitor dashboards show live telemetry
 
 ---
 

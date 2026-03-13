@@ -248,7 +248,7 @@
 | PostgreSQL | `testcontainers postgres:16-alpine` |
 | Qdrant | `testcontainers qdrant/qdrant:v1.9.7` |
 | Redis | `testcontainers redis:7-alpine` |
-| MinIO | `testcontainers minio/minio:latest` |
+| Azure Blob Storage | `testcontainers mcr.microsoft.com/azure-storage/azurite:latest` |
 | LLM API | Mocked via httpx respx or VCR.py |
 | SEC API | Mocked via httpx respx with recorded fixtures |
 
@@ -272,7 +272,7 @@
 | `test_list_companies_search` | Create AAPL/MSFT/GOOGL → `GET ?search=app` | Returns only AAPL |
 | `test_get_company_detail` | Create company + 2 documents → `GET /{id}` | Includes documents_summary.total=2 |
 | `test_get_company_not_found` | `GET /{random_uuid}` | Status 404 |
-| `test_delete_company_cascades` | Company with docs/chunks/financials/chats → `DELETE ?confirm=true` | Status 204; no rows in any table; Qdrant collection deleted; MinIO files removed |
+| `test_delete_company_cascades` | Company with docs/chunks/financials/chats → `DELETE ?confirm=true` | Status 204; no rows in any table; Qdrant collection deleted; Blob Storage files removed |
 | `test_delete_company_without_confirm` | `DELETE /{id}` (no confirm) | Status 400 |
 
 ### 3.2 Document Upload
@@ -281,14 +281,14 @@
 
 | Test | Action | Expected |
 |------|--------|----------|
-| `test_upload_pdf_document` | `POST` multipart with PDF | Status 202; MinIO file exists; DB row status="uploaded" |
+| `test_upload_pdf_document` | `POST` multipart with PDF | Status 202; Blob Storage file exists; DB row status="uploaded" |
 | `test_upload_html_document` | `POST` with HTML file | Same as PDF test |
 | `test_upload_duplicate_period` | Upload 10-K FY2024 twice | Status 409 |
 | `test_upload_oversized_file` | `POST` with 60MB file | Status 413 |
 | `test_upload_invalid_file_type` | `POST` with .docx file | Status 415 |
 | `test_list_documents_for_company` | 5 docs for A, 3 for B → list A | Returns exactly 5 |
 | `test_list_documents_filter_by_type` | 3 10-Ks + 2 10-Qs → filter `?doc_type=10-K` | Returns 3 |
-| `test_delete_document_removes_chunks` | Process doc → delete | No chunks in DB; vectors removed from Qdrant; MinIO file removed |
+| `test_delete_document_removes_chunks` | Process doc → delete | No chunks in DB; vectors removed from Qdrant; Blob Storage file removed |
 
 ### 3.3 Ingestion Pipeline
 
@@ -586,13 +586,15 @@ services:
   postgres: postgres:16-alpine
   redis: redis:7-alpine
   qdrant: qdrant/qdrant:v1.9.7
-  minio: minio/minio:latest
+  azurite: mcr.microsoft.com/azure-storage/azurite:latest
 env:
   DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
   QDRANT_URL: http://localhost:6333
   REDIS_URL: redis://localhost:6379/0
-  MINIO_ENDPOINT: localhost:9000
-  OPENAI_API_KEY: sk-test-mock    # mocked, not real
+  AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1;
+  LLM_PROVIDER: azure_openai
+  AZURE_OPENAI_API_KEY: sk-test-mock    # mocked, not real
+  AZURE_OPENAI_ENDPOINT: https://mock.openai.azure.com/
 steps:
   - checkout
   - setup python 3.12
@@ -618,11 +620,11 @@ steps:
 needs: [unit-tests, integration-tests, frontend-tests]
 steps:
   - checkout
-  - docker compose up -d
+  - docker compose -f docker-compose.dev.yml up -d
   - wait for health check
   - setup playwright
   - run: pytest tests/e2e/ -v --timeout=300
-  - docker compose down
+  - docker compose -f docker-compose.dev.yml down
 artifacts:
   - playwright traces and screenshots on failure
 ```
@@ -633,9 +635,27 @@ artifacts:
 needs: [e2e-tests]
 if: github.ref == 'refs/heads/main'
 steps:
+  - checkout
+  - az login (via OIDC federated credentials)
+  - az acr login --name ${ACR_NAME}
   - build backend Docker image
   - build frontend Docker image
-  - push to container registry (optional)
+  - docker push ${ACR_NAME}.azurecr.io/investorinsights-api:${GITHUB_SHA}
+  - docker push ${ACR_NAME}.azurecr.io/investorinsights-frontend:${GITHUB_SHA}
+```
+
+#### `deploy-staging` (optional)
+
+```yaml
+needs: [build-images]
+if: github.ref == 'refs/heads/main'
+environment: staging
+steps:
+  - az login (via OIDC federated credentials)
+  - az containerapp update --name api --resource-group rg-investorinsights-staging --image ...
+  - az containerapp update --name worker --resource-group rg-investorinsights-staging --image ...
+  - az containerapp update --name frontend --resource-group rg-investorinsights-staging --image ...
+  - wait for health checks to pass
 ```
 
 ---

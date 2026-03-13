@@ -5,13 +5,46 @@
 ```
 company-analysis-platform/
 ├── README.md
-├── DEPLOYMENT.md
+├── DEPLOYMENT.md                         # Azure deployment guide
 ├── LICENSE
-├── docker-compose.yml
-├── docker-compose.override.yml          # dev overrides (volume mounts)
+├── docker-compose.dev.yml                # local development (PostgreSQL, Redis, Qdrant, Azurite)
+├── docker-compose.override.yml           # dev overrides (volume mounts)
 ├── .env.example
 ├── .gitignore
 ├── Makefile                              # common commands (see Appendix F)
+│
+├── infra/                                # Azure Infrastructure as Code (Bicep)
+│   ├── main.bicep                        # orchestrator — deploys all modules
+│   ├── main.bicepparam
+│   ├── parameters/
+│   │   ├── dev.bicepparam
+│   │   └── prod.bicepparam
+│   ├── modules/
+│   │   ├── resource-group.bicep
+│   │   ├── networking.bicep              # VNet, subnets, private endpoints
+│   │   ├── postgresql.bicep              # Azure DB for PostgreSQL Flex Server
+│   │   ├── redis.bicep                   # Azure Cache for Redis
+│   │   ├── storage.bicep                 # Azure Blob Storage + containers
+│   │   ├── openai.bicep                  # Azure OpenAI + model deployments
+│   │   ├── key-vault.bicep               # Azure Key Vault + secrets
+│   │   ├── container-registry.bicep      # Azure Container Registry
+│   │   ├── log-analytics.bicep           # Log Analytics workspace
+│   │   ├── app-insights.bicep            # Application Insights
+│   │   └── container-apps.bicep          # Container Apps Environment + apps
+│   ├── dashboards/
+│   │   ├── api-performance.json          # Azure Portal dashboard template
+│   │   ├── ingestion-pipeline.json
+│   │   └── llm-usage.json
+│   └── scripts/
+│       ├── deploy.sh                     # az deployment sub create wrapper
+│       ├── destroy.sh                    # tear down environment
+│       └── seed-keyvault.sh              # initial secret population
+│
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                        # lint, test, build on PRs
+│       ├── deploy-staging.yml            # deploy to staging on merge to main
+│       └── deploy-prod.yml              # deploy to prod (manual trigger)
 │
 ├── backend/
 │   ├── Dockerfile
@@ -109,10 +142,10 @@ company-analysis-platform/
 │   │   │
 │   │   ├── clients/                      # External service clients
 │   │   │   ├── __init__.py
-│   │   │   ├── openai_client.py          # embeddings + chat completions
+│   │   │   ├── openai_client.py          # embeddings + chat (Azure OpenAI + direct OpenAI)
 │   │   │   ├── sec_edgar_client.py       # EDGAR API interactions
 │   │   │   ├── qdrant_client.py          # vector DB operations
-│   │   │   └── storage_client.py         # MinIO/S3 operations
+│   │   │   └── storage_client.py         # Azure Blob Storage operations
 │   │   │
 │   │   ├── db/                           # Database utilities
 │   │   │   ├── __init__.py
@@ -329,8 +362,7 @@ company-analysis-platform/
 │           └── use-sse.test.ts
 │
 └── scripts/
-    ├── setup.sh                          # first-time setup (create .env, init DB)
+    ├── setup.sh                          # first-time local dev setup (create .env, init DB)
     ├── seed.sh                           # seed default analysis profile
-    ├── backup.sh                         # run backups
-    └── reset.sh                          # wipe all data (development)
+    └── reset.sh                          # wipe all local data (development)
 ```
