@@ -18,6 +18,7 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.health import router as health_router
 from app.api.middleware.error_handler import register_error_handlers
 from app.api.middleware.request_id import RequestIDMiddleware
 from app.api.router import api_router
@@ -96,6 +97,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app.add_middleware(RequestIDMiddleware)
 
     # ── Routers ──────────────────────────────────────────────────
+    # Health is mounted directly on the app (not through api_router)
+    # so it bypasses the router-level auth dependency.
+    app.include_router(health_router, prefix="/api/v1")
     app.include_router(api_router)
 
     # ── Error handlers ───────────────────────────────────────────

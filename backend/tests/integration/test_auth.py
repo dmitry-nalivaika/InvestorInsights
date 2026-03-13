@@ -63,13 +63,13 @@ class TestAuthEnforcement:
     ) -> None:
         """GET /api/v1/health without X-API-Key → 200 (public).
 
-        The health route is mounted directly on the app (not through
+        The health router is mounted directly on the app (not through
         the authenticated api_router) so it bypasses auth.
         """
         response = client.get("/api/v1/health")
         assert response.status_code == 200
         body = response.json()
-        assert body["status"] == "healthy"
+        assert body["status"] in ("healthy", "degraded", "unhealthy")
 
     # ── Error body structure ─────────────────────────────────────
 

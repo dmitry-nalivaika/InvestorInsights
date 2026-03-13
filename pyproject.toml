@@ -79,6 +79,7 @@ markers = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:sqlalchemy.*",
+    "ignore:urllib3 v2 only supports OpenSSL:Warning",
 ]
 timeout = 30
 timeout_method = "signal"
