@@ -3,11 +3,20 @@ Top-level API router.
 
 Includes all sub-routers under /api/v1.
 New route modules are registered here as they are implemented.
+
+Auth: ``require_api_key`` is attached as a router-level dependency
+so it applies to every endpoint mounted here. The health endpoint
+opts out by declaring ``dependencies=[]`` on its own route.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-api_router = APIRouter(prefix="/api/v1")
+from app.api.middleware.auth import require_api_key
+
+api_router = APIRouter(
+    prefix="/api/v1",
+    dependencies=[Depends(require_api_key)],
+)
 
 # ── Sub-routers (added as each module is implemented) ────────────
 # from app.api.health import router as health_router
