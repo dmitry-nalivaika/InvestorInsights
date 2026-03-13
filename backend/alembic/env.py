@@ -22,10 +22,9 @@ from app.config import get_settings  # noqa: E402
 from app.models.base import Base  # noqa: E402
 
 # Import all model modules so Base.metadata is fully populated.
-# These will be added as T009 implements them:
-# from app.models import company, document, section, chunk  # noqa: E402
-# from app.models import financial, profile, criterion, result  # noqa: E402
-# from app.models import session, message  # noqa: E402
+from app.models import company, document, section, chunk  # noqa: E402, F401
+from app.models import financial, profile, criterion, result  # noqa: E402, F401
+from app.models import session, message  # noqa: E402, F401
 
 # ── Alembic Config ───────────────────────────────────────────────
 
