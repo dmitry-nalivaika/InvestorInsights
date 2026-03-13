@@ -143,7 +143,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - What happens when a filing has no XBRL data? → Financial extraction logs a warning, stores whatever is available, does not block text ingestion.
 - What happens with very large filings (300+ pages)? → System processes them within the 5-minute target; chunking handles any document size.
 - What happens when a custom formula divides by zero? → Returns null, criterion marked "no_data", not a crash.
-- What happens when the $50/month dev budget is at risk? → Scale-to-zero on all containers, gpt-4o-mini instead of gpt-4o, no managed Redis.
+- What happens when the $50/month dev budget is at risk? → V1: Manual operator action — scale-to-zero on all containers, switch to gpt-4o-mini, no managed Redis. V2: Automated budget monitoring and model downgrade.
 
 ---
 
@@ -187,14 +187,15 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 
 **Chat Agent**
 - **FR-400**: System MUST provide a conversational AI agent scoped to a single company per session
-- **FR-401**: System MUST retrieve top-K relevant chunks via semantic similarity search
+- **FR-401**: System MUST retrieve top-K relevant chunks via semantic similarity search (configurable top-K, default 15, max 50)
 - **FR-402**: System MUST inject retrieved chunks as context into the LLM prompt
 - **FR-403**: System MUST stream LLM responses token-by-token via Server-Sent Events
 - **FR-404**: System MUST include source citations in responses (document type, year, section)
-- **FR-405**: System MUST maintain conversation history within a session (configurable limit)
+- **FR-405**: System MUST maintain conversation history within a session (configurable limit, default 10 exchanges, 4000 token budget)
 - **FR-406**: System MUST persist chat sessions and messages for later retrieval
 - **FR-407**: System MUST instruct the LLM to refuse speculation beyond the filing data
 - **FR-408**: System MUST return retrieved source chunks with metadata alongside the response
+- **FR-409**: System SHOULD support LLM-based query expansion (generate 2–3 alternative queries) to improve retrieval recall
 - **FR-413**: System MUST handle the case where no relevant chunks are found
 
 **Financial Analysis Engine**

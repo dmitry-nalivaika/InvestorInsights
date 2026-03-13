@@ -71,6 +71,8 @@
 - [ ] T104 [US1] Unique ticker constraint enforcement (409 on duplicate)
 - [ ] T105 [US1] Company list with summary statistics (doc count, latest filing, readiness %) in `backend/app/api/companies.py`
 - [ ] T106 [US1] Company delete with CASCADE cleanup (all associated data) in `backend/app/services/company_service.py`
+- [ ] T109 [US1] Company metadata update — `PUT /api/v1/companies/{id}` partial update (name, sector, industry override) in `backend/app/api/companies.py` (FR-104)
+- [ ] T110 [US1] Company search and filter — query params `?search=` (ticker, name) and `?sector=` on list endpoint in `backend/app/api/companies.py` (FR-106)
 
 ### Tests for User Story 1
 
@@ -89,21 +91,21 @@
 
 ### Implementation for User Story 2 — Document Ingestion
 
-- [ ] T200 [P] [US2] Document upload API — `POST /companies/{id}/documents` (multipart) in `backend/app/api/documents.py`
+- [ ] T200 [P] [US2] Document upload API — `POST /api/v1/companies/{id}/documents` (multipart) in `backend/app/api/documents.py`
 - [ ] T201 [P] [US2] File storage in Azure Blob Storage (organised by company/type/year) in `backend/app/services/document_service.py`
 - [ ] T202 [US2] Document status state machine (uploaded → parsing → parsed → embedding → ready → error) in `backend/app/models/document.py`
 - [ ] T203 [US2] Duplicate upload prevention (409 for same company + type + year + quarter) in `backend/app/services/document_service.py`
 - [ ] T204 [P] [US2] PDF text extraction — PyMuPDF parser in `backend/app/ingestion/pdf_parser.py`
 - [ ] T205 [P] [US2] HTML text extraction — BeautifulSoup + custom cleaner in `backend/app/ingestion/html_parser.py`
 - [ ] T206 [US2] Text cleaning and normalisation (Unicode, whitespace, headers/footers, tables → markdown) in `backend/app/ingestion/text_cleaner.py`
-- [ ] T207 [US2] Section splitter — regex-based for 10-K Items (1, 1A, 1B, 1C, 2, 3, 5, 7, 7A, 8, 9A) and 10-Q in `backend/app/ingestion/section_splitter.py`
+- [ ] T207 [US2] Section splitter — regex-based for 10-K Items (1, 1A, 1B, 1C, 2, 3, 5, 6, 7, 7A, 8, 9A) and 10-Q in `backend/app/ingestion/section_splitter.py`
 - [ ] T208 [US2] Text chunker — recursive character splitter (768 tokens, 128 overlap, tiktoken) in `backend/app/ingestion/chunker.py`
 - [ ] T209 [US2] Qdrant collection management — create per-company collection (3072 dims, cosine) in `backend/app/clients/qdrant_client.py`
 - [ ] T210 [US2] Azure OpenAI embedding integration — batch embed chunks (text-embedding-3-large) in `backend/app/ingestion/embedder.py`
 - [ ] T211 [US2] Vector upsert to Qdrant with metadata payload in `backend/app/ingestion/embedder.py`
 - [ ] T212 [US2] Ingestion pipeline orchestrator — coordinates all stages, updates status in `backend/app/ingestion/pipeline.py` (depends on T204–T211)
 - [ ] T213 [US2] Corrupt file handling — graceful error with clear message in `backend/app/ingestion/pipeline.py`
-- [ ] T214 [US2] Document retry API — `POST /documents/{id}/retry` (re-run from failed stage) in `backend/app/api/documents.py`
+- [ ] T214 [US2] Document retry API — `POST /api/v1/documents/{id}/retry` (re-run from failed stage) in `backend/app/api/documents.py`
 - [ ] T215 [US2] Document delete with cascade — remove file, vectors, sections, chunks, financials in `backend/app/services/document_service.py`
 
 ### Implementation for User Story 2 — SEC EDGAR Integration
@@ -114,14 +116,14 @@
 - [ ] T303 [P] [US2] XBRL `companyfacts` API integration — fetch structured financial data in `backend/app/clients/sec_xbrl_client.py`
 - [ ] T304 [US2] XBRL tag → internal schema mapper (60+ US-GAAP tags) in `backend/app/ingestion/xbrl_mapper.py`
 - [ ] T305 [US2] Financial statements storage in PostgreSQL (JSONB `statement_data`) in `backend/app/services/financial_service.py`
-- [ ] T306 [US2] Auto-fetch API — `POST /companies/{id}/documents/fetch-sec` in `backend/app/api/documents.py`
+- [ ] T306 [US2] Auto-fetch API — `POST /api/v1/companies/{id}/documents/fetch-sec` in `backend/app/api/documents.py`
 - [ ] T307 [US2] Celery queue for SEC fetch tasks (skip duplicates, progress tracking) in `backend/app/worker/tasks/sec_fetch.py`
-- [ ] T308 [US2] Async task status API — `GET /tasks/{task_id}` in `backend/app/api/tasks.py`
+- [ ] T308 [US2] Async task status API — `GET /api/v1/tasks/{task_id}` in `backend/app/api/tasks.py`
 
 ### Implementation for User Story 2 — Financial Data API (also serves US6)
 
-- [ ] T309 [US2] Financial data API — `GET /companies/{id}/financials` in `backend/app/api/financials.py`
-- [ ] T310 [P] [US2] CSV export — `GET /companies/{id}/financials/export` in `backend/app/api/financials.py`
+- [ ] T309 [US2] Financial data API — `GET /api/v1/companies/{id}/financials` in `backend/app/api/financials.py`
+- [ ] T310 [P] [US2] CSV export — `GET /api/v1/companies/{id}/financials/export` in `backend/app/api/financials.py`
 
 ### Tests for User Story 2
 
@@ -147,11 +149,12 @@
 - [ ] T403 [US3] System prompt builder — company-specific prompt with rules in `backend/app/services/chat_agent.py`
 - [ ] T404 [US3] Context assembly — retrieved chunks + conversation history within token budget in `backend/app/services/chat_agent.py` (depends on T402, T403)
 - [ ] T405 [US3] Azure OpenAI chat completion with streaming (SSE, with direct OpenAI fallback) in `backend/app/clients/openai_client.py`
-- [ ] T406 [US3] SSE endpoint — `POST /companies/{id}/chat` with event types: session, sources, token, done, error in `backend/app/api/chat.py`
+- [ ] T406 [US3] SSE endpoint — `POST /api/v1/companies/{id}/chat` with event types: session, sources, token, done, error in `backend/app/api/chat.py`
 - [ ] T407 [US3] Source citation extraction and formatting in `backend/app/services/chat_agent.py`
 - [ ] T408 [US3] Conversation history management (last N exchanges, configurable, token budget) in `backend/app/services/chat_service.py`
 - [ ] T409 [P] [US3] Session title auto-generation (from first user message) in `backend/app/services/chat_service.py`
 - [ ] T410 [US3] Retrieval config support (top_k, score_threshold, doc_type/year/section filters) in `backend/app/services/retrieval_service.py`
+- [ ] T415 [US3] LLM-based query expansion — generate 2–3 alternative queries to improve retrieval recall in `backend/app/services/retrieval_service.py` (FR-409)
 - [ ] T411 [US3] No-results handling — inform user, suggest rephrasing in `backend/app/services/chat_agent.py`
 - [ ] T412 [US3] Out-of-scope refusal (predictions, buy/sell, unrelated topics) in `backend/app/services/chat_agent.py`
 
@@ -176,16 +179,17 @@
 - [ ] T501 [P] [US4] Custom formula expression parser (lexer + recursive descent parser + evaluator) in `backend/app/analysis/expression_parser.py`
 - [ ] T502 [US4] `prev()` reference resolution — previous period data lookback in `backend/app/analysis/expression_parser.py`
 - [ ] T503 [US4] Formula validation at save time (field references, balanced parens, syntax) in `backend/app/analysis/expression_parser.py`
-- [ ] T504 [US4] Analysis profile CRUD API — `POST/GET/PUT/DELETE /analysis/profiles` in `backend/app/api/analysis.py`
+- [ ] T504 [US4] Analysis profile CRUD API — `POST/GET/PUT/DELETE /api/v1/analysis/profiles` in `backend/app/api/analysis.py`
 - [ ] T505 [US4] Analysis criteria management (1–30 per profile, with category, formula, comparison, threshold, weight, lookback) in `backend/app/services/analysis_service.py`
 - [ ] T506 [US4] Analysis execution engine — load financials, compute formulas across years, evaluate thresholds in `backend/app/analysis/engine.py` (depends on T500, T501)
 - [ ] T507 [US4] Trend detection — OLS linear regression (improving/declining/stable, min 3 data points) in `backend/app/analysis/trend.py`
 - [ ] T508 [US4] Scoring — binary pass/fail × weight, null handling (no_data excluded from max), grade A–F in `backend/app/analysis/scorer.py`
-- [ ] T509 [US4] Analysis run API — `POST /analysis/run` (1–10 companies × 1 profile) in `backend/app/api/analysis.py`
+- [ ] T509 [US4] Analysis run API — `POST /api/v1/analysis/run` (1–10 companies × 1 profile) in `backend/app/api/analysis.py`
 - [ ] T510 [US4] Analysis results persistence (JSONB result_details, overall/max/pct scores) in `backend/app/services/analysis_service.py`
 - [ ] T511 [US4] AI narrative summary generation via LLM (strengths, concerns, data gaps) in `backend/app/services/analysis_service.py`
-- [ ] T512 [US4] Analysis results API — `GET /analysis/results`, `GET /analysis/results/{id}` in `backend/app/api/analysis.py`
-- [ ] T513 [P] [US4] Built-in formulas list API — `GET /analysis/formulas` in `backend/app/api/analysis.py`
+- [ ] T512 [US4] Analysis results API — `GET /api/v1/analysis/results`, `GET /api/v1/analysis/results/{id}` in `backend/app/api/analysis.py`
+- [ ] T513 [P] [US4] Built-in formulas list API — `GET /api/v1/analysis/formulas` in `backend/app/api/analysis.py`
+- [ ] T517 [US4] Analysis results JSON export — `GET /api/v1/analysis/results/{id}/export` returns full result as downloadable JSON in `backend/app/api/analysis.py` (FR-601)
 - [ ] T514 [P] [US4] Default analysis profile seeding (Quality Value Investor, 15 criteria) in `backend/scripts/seed_profiles.py`
 
 ### Tests for User Story 4
@@ -274,9 +278,9 @@
 - [ ] T806 CI/CD pipeline — GitHub Actions → build → test → push ACR → deploy Container Apps in `.github/workflows/`
 - [ ] T807 [P] Azure Monitor alerts (API errors, ingestion stuck, LLM failures, DB issues, memory) in `infra/modules/`
 - [ ] T808 [P] Azure Portal dashboards (API performance, ingestion pipeline, LLM usage, infra health) in `infra/dashboards/`
+- [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total) in `backend/app/observability/metrics.py` (Constitution VII)
 - [ ] T809 [P] README.md — local dev setup, architecture overview
 - [ ] T810 [P] DEPLOYMENT.md — Azure deployment guide (Bicep, az CLI, secrets, verification)
-- [ ] T811 [P] Default analysis profile seed script in `backend/scripts/seed_profiles.py`
 - [ ] T812 Request validation hardening, error message review
 - [ ] T813 [P] Log output review — no sensitive data, proper App Insights integration
 - [ ] T814 [P] Dependency security audit
