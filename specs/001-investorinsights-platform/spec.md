@@ -99,6 +99,9 @@ As an analyst, I want to compare 2–10 companies against the same analysis prof
 
 1. **Given** multiple companies with financial data, **When** I run a comparison against one profile, **Then** a table shows each criterion value for each company, with companies ranked by overall score.
 2. **Given** comparison results, **When** I view them, **Then** cells are color-coded pass/fail per company per criterion.
+3. **Given** companies with different data periods (e.g., AAPL has 10 years, a newly-added company has 2 years), **When** compared, **Then** each company is scored only on its available data and missing periods are noted.
+4. **Given** a company in the comparison set with no financial data at all, **When** the comparison runs, **Then** that company is included with a "no_data" status and ranked last.
+5. **Given** comparison results, **When** I want to export, **Then** I can export the comparison table as JSON via the analysis results export endpoint.
 
 ---
 
@@ -143,7 +146,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - What happens when a filing has no XBRL data? → Financial extraction logs a warning, stores whatever is available, does not block text ingestion.
 - What happens with very large filings (300+ pages)? → System processes them within the 5-minute target; chunking handles any document size.
 - What happens when a custom formula divides by zero? → Returns null, criterion marked "no_data", not a crash.
-- What happens when the $50/month dev budget is at risk? → V1: Manual operator action — scale-to-zero on all containers, switch to gpt-4o-mini, no managed Redis. V2: Automated budget monitoring and model downgrade.
+- What happens when the $50/month dev budget is at risk? → Azure Budget alerts fire at 80% ($40) and 100% ($50). V1: Manual operator action per budget-breach runbook — scale-to-zero on all containers, switch to gpt-4o-mini, no managed Redis. V2: Automated budget monitoring and model downgrade.
 
 ---
 
@@ -162,11 +165,11 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 
 **Document Management**
 - **FR-200**: System MUST accept file uploads in PDF and HTML formats (max 50 MB)
-- **FR-201**: System MUST accept filing metadata: doc_type (10-K, 10-Q, 8-K), fiscal_year, fiscal_quarter, filing_date, period_end_date
+- **FR-201**: System MUST accept filing metadata: doc_type (10-K, 10-Q, 8-K, 20-F, DEF14A, OTHER), fiscal_year, fiscal_quarter, filing_date, period_end_date
 - **FR-202**: System MUST store uploaded files organized by company/type/year
 - **FR-203**: System MUST prevent duplicate uploads (same company + doc_type + year + quarter)
 - **FR-204**: System MUST track document processing status: uploaded → parsing → parsed → embedding → ready → error
-- **FR-205**: System MUST support automatic fetching of filings from SEC EDGAR given a CIK and year range
+- **FR-205**: System MUST support automatic fetching of filings from SEC EDGAR given a CIK and year range (default: 10-K and 10-Q filings, last 10 years; see API contract for configurable parameters)
 - **FR-206**: System MUST respect SEC EDGAR rate limits (max 10 requests/second)
 - **FR-207**: System MUST extract text from PDF files preserving paragraph structure
 - **FR-208**: System MUST extract text from HTML filings preserving content structure
@@ -191,25 +194,31 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-402**: System MUST inject retrieved chunks as context into the LLM prompt
 - **FR-403**: System MUST stream LLM responses token-by-token via Server-Sent Events
 - **FR-404**: System MUST include source citations in responses (document type, year, section)
-- **FR-405**: System MUST maintain conversation history within a session (configurable limit, default 10 exchanges, 4000 token budget)
+- **FR-405**: System MUST maintain conversation history within a session (configurable limit, default 10 exchanges, 4000 token history budget; see plan.md RAG Chat Agent Detail for additional context and response token budgets)
 - **FR-406**: System MUST persist chat sessions and messages for later retrieval
 - **FR-407**: System MUST instruct the LLM to refuse speculation beyond the filing data
 - **FR-408**: System MUST return retrieved source chunks with metadata alongside the response
-- **FR-409**: System SHOULD support LLM-based query expansion (generate 2–3 alternative queries) to improve retrieval recall
+- **FR-409**: System MUST support LLM-based query expansion (generate 2–3 alternative queries) to improve retrieval recall, controllable via retrieval config toggle
 - **FR-413**: System MUST handle the case where no relevant chunks are found
 
 **Financial Analysis Engine**
 - **FR-500**: System MUST provide a library of at least 25 built-in financial formulas
 - **FR-501**: System MUST allow creating analysis profiles containing 1–30 criteria
 - **FR-502**: System MUST support comparison operators: >, >=, <, <=, =, between, trend_up, trend_down
+- **FR-503**: System MUST validate custom formula expressions at save time (field references, balanced parentheses, syntax correctness)
+- **FR-504**: System MUST handle division-by-zero in formula evaluation gracefully (return null, mark criterion "no_data")
 - **FR-505**: System MUST compute each criterion's value across all available years within the lookback window
 - **FR-506**: System MUST determine pass/fail based on latest value vs. threshold
-- **FR-507**: System MUST compute trend direction (improving/declining/stable) using linear regression
+- **FR-507**: System MUST compute trend direction (improving/declining/stable) using OLS linear regression over available years (minimum 3 non-null data points; normalised slope > +3% → improving, < −3% → declining, otherwise → stable)
 - **FR-508**: System MUST compute an overall weighted score and percentage
 - **FR-509**: System MUST persist analysis results for historical comparison
-- **FR-512**: System SHOULD support custom formula expressions with field references into financial data
+- **FR-510**: System MUST assign letter grades based on percentage score: A (90–100%), B (75–89%), C (60–74%), D (40–59%), F (0–39%)
+- **FR-511**: System MUST exclude criteria with no computable data ("no_data") from the maximum possible score
+- **FR-512**: System SHOULD support custom formula expressions with field references into financial data (see plan.md Expression Parser Specification for DSL syntax: operators, functions, `prev()` references, and field reference patterns)
+- **FR-513**: System MUST provide a list of all available built-in formulas via API
 - **FR-514**: System SHOULD support comparing multiple companies against the same profile
 - **FR-515**: System SHOULD generate an AI narrative summary of analysis results
+- **FR-516**: System MUST support criteria categories: profitability, valuation, growth, liquidity, solvency, efficiency, dividend, quality, custom
 - **FR-517**: System MUST support year-over-year growth formulas that reference previous period data
 
 **Data Export**
@@ -236,7 +245,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 ### Measurable Outcomes
 
 - **SC-001**: An analyst can go from "new company registration" to "asking questions about its filings" within 15 minutes (for a company with 5 annual filings auto-fetched from EDGAR).
-- **SC-002**: Chat responses cite specific filings and sections in at least 90% of answers where filing data exists.
+- **SC-002**: Chat responses include at least one source citation (filing type, year, section) in at least 90% of answers where the retrieval step returns chunks above the score threshold (≥ 0.65 cosine similarity).
 - **SC-003**: The chat agent refuses out-of-scope requests (predictions, buy/sell) 100% of the time.
 - **SC-004**: A single 200-page 10-K is fully ingested (parsed, chunked, embedded, XBRL extracted) in under 5 minutes.
 - **SC-005**: API response time for non-streaming endpoints is under 500ms at p95.

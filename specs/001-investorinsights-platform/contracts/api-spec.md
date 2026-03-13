@@ -105,7 +105,7 @@ POST /api/v1/companies/{company_id}/documents:
   content_type: multipart/form-data
   request_body:
     file: binary (required, PDF or HTML, max 50MB)
-    doc_type: string (required, enum: 10-K, 10-Q, 8-K)
+    doc_type: string (required, enum: 10-K, 10-Q, 8-K, 20-F, DEF14A, OTHER)
     fiscal_year: integer (required, 1990-2100)
     fiscal_quarter: integer (optional, 1-4, required for 10-Q)
     filing_date: date (required, ISO format)

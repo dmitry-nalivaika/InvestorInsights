@@ -404,9 +404,9 @@ Company-specific prompt injecting company name, ticker, CIK, filing date range, 
 default_top_k: 15
 max_top_k: 50
 score_threshold: 0.65 (cosine similarity)
-query_expansion: LLM-based (generate 2–3 alternative queries)
+query_expansion: LLM-based (generate 2–3 alternative queries, controllable via config toggle)
 context_budget: 12000 tokens max
-history_budget: 4000 tokens max
+history_budget: 4000 tokens max (spec FR-405: default 10 exchanges, 4000 token budget)
 response_budget: 4096 tokens max
 ```
 

@@ -56,7 +56,7 @@
 - [ ] **FR-406** System MUST persist chat sessions and messages
 - [ ] **FR-407** System MUST refuse speculation beyond filing data
 - [ ] **FR-408** System MUST return source chunks with metadata
-- [ ] **FR-409** System SHOULD support LLM-based query expansion (2–3 alternative queries) to improve retrieval recall
+- [ ] **FR-409** System MUST support LLM-based query expansion (2–3 alternative queries), controllable via config toggle
 - [ ] **FR-413** System MUST handle no-results case
 
 ### Financial Analysis Engine
@@ -64,14 +64,20 @@
 - [ ] **FR-500** System MUST provide 25+ built-in financial formulas
 - [ ] **FR-501** System MUST allow creating profiles with 1–30 criteria
 - [ ] **FR-502** System MUST support comparison operators (>, >=, <, <=, =, between, trend_up/down)
+- [ ] **FR-503** System MUST validate custom formula expressions at save time
+- [ ] **FR-504** System MUST handle division-by-zero gracefully (return null, mark "no_data")
 - [ ] **FR-505** System MUST compute values across all years in lookback window
 - [ ] **FR-506** System MUST determine pass/fail on latest value vs. threshold
-- [ ] **FR-507** System MUST compute trend direction via linear regression
+- [ ] **FR-507** System MUST compute trend direction via OLS linear regression (±3% normalised slope threshold, min 3 data points)
 - [ ] **FR-508** System MUST compute weighted score and percentage
 - [ ] **FR-509** System MUST persist analysis results
-- [ ] **FR-512** System SHOULD support custom formula expressions
+- [ ] **FR-510** System MUST assign letter grades A–F based on percentage score
+- [ ] **FR-511** System MUST exclude "no_data" criteria from maximum possible score
+- [ ] **FR-512** System SHOULD support custom formula expressions (see plan.md Expression Parser Spec)
+- [ ] **FR-513** System MUST provide built-in formulas list via API
 - [ ] **FR-514** System SHOULD support multi-company comparison
 - [ ] **FR-515** System SHOULD generate AI narrative summary
+- [ ] **FR-516** System MUST support criteria categories (profitability, valuation, growth, liquidity, solvency, efficiency, dividend, quality, custom)
 - [ ] **FR-517** System MUST support YoY growth formulas (prev() references)
 
 ### Data Export

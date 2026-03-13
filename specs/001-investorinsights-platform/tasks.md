@@ -104,8 +104,8 @@
 - [ ] T209 [US2] Qdrant collection management — create per-company collection (3072 dims, cosine) in `backend/app/clients/qdrant_client.py`
 - [ ] T210 [US2] Azure OpenAI embedding integration — batch embed chunks (text-embedding-3-large) in `backend/app/ingestion/embedder.py`
 - [ ] T211 [US2] Vector upsert to Qdrant with metadata payload in `backend/app/ingestion/embedder.py`
-- [ ] T212 [US2] Ingestion pipeline orchestrator — coordinates all stages, updates status in `backend/app/ingestion/pipeline.py` (depends on T204–T211)
-- [ ] T213 [US2] Corrupt file handling — graceful error with clear message in `backend/app/ingestion/pipeline.py`
+- [ ] T212 [US2] Ingestion pipeline orchestrator — coordinates all stages (parse → split → chunk → embed; XBRL extraction in parallel via T303–T305), dispatched as Celery async task from document upload endpoint (FR-307), updates document status at each stage in `backend/app/ingestion/pipeline.py` (depends on T204–T211, T303–T305)
+- [ ] T213 [US2] Upload validation and corrupt file handling — magic-byte validation (PDF/HTML), file-size enforcement (50 MB max per FR-200), filename sanitisation, graceful error with human-readable messages per error type (corrupt PDF, unsupported format, oversized file), sets status to "error" with descriptive `error_message` in `backend/app/ingestion/pipeline.py`
 - [ ] T214 [US2] Document retry API — `POST /api/v1/documents/{id}/retry` (re-run from failed stage) in `backend/app/api/documents.py`
 - [ ] T215 [US2] Document delete with cascade — remove file, vectors, sections, chunks, financials in `backend/app/services/document_service.py`
 
@@ -113,7 +113,6 @@
 
 - [ ] T300 [P] [US2] SEC EDGAR filing index fetcher — list available filings for company/CIK in `backend/app/clients/sec_client.py`
 - [ ] T301 [P] [US2] SEC EDGAR filing downloader — fetch actual filing documents in `backend/app/clients/sec_client.py`
-- [ ] T302 [US2] SEC API rate limiter integration test — verify 10 req/s enforcement and User-Agent header from T019 in `backend/app/clients/sec_client.py`
 - [ ] T303 [P] [US2] XBRL `companyfacts` API integration — fetch structured financial data in `backend/app/clients/sec_xbrl_client.py`
 - [ ] T304 [US2] XBRL tag → internal schema mapper (60+ US-GAAP tags) in `backend/app/ingestion/xbrl_mapper.py`
 - [ ] T305 [US2] Financial statements storage in PostgreSQL (JSONB `statement_data`) in `backend/app/services/financial_service.py`
@@ -123,13 +122,14 @@
 
 ### Implementation for User Story 2 — Financial Data API (also serves US6)
 
-- [ ] T309 [US2] Financial data API — `GET /api/v1/companies/{id}/financials` in `backend/app/api/financials.py`
-- [ ] T310 [P] [US2] CSV export — `GET /api/v1/companies/{id}/financials/export` in `backend/app/api/financials.py`
+- [ ] T309 [US2/US6] Financial data API — `GET /api/v1/companies/{id}/financials` in `backend/app/api/financials.py`
+- [ ] T310 [P] [US2/US6] CSV export — `GET /api/v1/companies/{id}/financials/export` in `backend/app/api/financials.py` (FR-600)
 
 ### Tests for User Story 2
 
+- [ ] T302 [P] [US2] Integration test — SEC API rate limiter (verify 10 req/s enforcement and User-Agent header from T019) in `backend/tests/integration/test_sec_rate_limiter.py`
 - [ ] T311 [P] [US2] Unit tests — parser, splitter, chunker, cleaner, XBRL mapper in `backend/tests/unit/test_ingestion.py`
-- [ ] T312 [P] [US2] Integration tests — full pipeline (upload → ready) in `backend/tests/integration/test_ingestion_pipeline.py`
+- [ ] T312 [P] [US2] Integration tests — full pipeline (upload → Celery dispatch → ready) in `backend/tests/integration/test_ingestion_pipeline.py`
 - [ ] T313 [P] [US2] Integration tests — SEC fetch + XBRL extract flow in `backend/tests/integration/test_sec_fetch.py`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
@@ -146,7 +146,7 @@
 
 - [ ] T400 [P] [US3] Chat session management — create, list, get, delete in `backend/app/services/chat_service.py`
 - [ ] T401 [P] [US3] Chat message persistence (role, content, sources, token_count) in `backend/app/services/chat_service.py`
-- [ ] T402 [US3] Vector similarity search — query embedding + Qdrant search with metadata filters in `backend/app/services/retrieval_service.py`
+- [ ] T402 [US3] Semantic similarity search — query embedding + Qdrant search with metadata filters in `backend/app/services/retrieval_service.py`
 - [ ] T403 [US3] System prompt builder — company-specific prompt with rules in `backend/app/services/chat_agent.py`
 - [ ] T404 [US3] Context assembly — retrieved chunks + conversation history within token budget in `backend/app/services/chat_agent.py` (depends on T402, T403)
 - [ ] T405 [US3] Azure OpenAI chat completion with streaming (SSE, with direct OpenAI fallback) in `backend/app/clients/openai_client.py`
@@ -155,7 +155,7 @@
 - [ ] T408 [US3] Conversation history management (last N exchanges, configurable, token budget) in `backend/app/services/chat_service.py`
 - [ ] T409 [P] [US3] Session title auto-generation (from first user message) in `backend/app/services/chat_service.py`
 - [ ] T410 [US3] Retrieval config support (top_k, score_threshold, doc_type/year/section filters) in `backend/app/services/retrieval_service.py`
-- [ ] T415 [US3] LLM-based query expansion — generate 2–3 alternative queries to improve retrieval recall in `backend/app/services/retrieval_service.py` (FR-409)
+- [ ] T415 [US3] LLM-based query expansion — generate 2–3 alternative queries to improve retrieval recall, controllable via `query_expansion` boolean in retrieval config (default: true) in `backend/app/services/retrieval_service.py` (FR-409)
 - [ ] T411 [US3] No-results handling — inform user, suggest rephrasing in `backend/app/services/chat_agent.py`
 - [ ] T412 [US3] Out-of-scope refusal (predictions, buy/sell, unrelated topics) in `backend/app/services/chat_agent.py`
 
@@ -227,7 +227,7 @@
 
 **Independent Test**: View AAPL financials → see revenue, net income, etc. across years → export CSV.
 
-> **Note**: Backend endpoints (T309, T310) were implemented in Phase 4 as part of US2. This story's remaining work is frontend only (covered in Phase 9).
+> **Note**: Backend endpoints (T309, T310) were implemented in Phase 4 as part of US2 (tagged [US2/US6]). Frontend is covered by T706 (tagged [US6/US7]) in Phase 9.
 
 **Checkpoint**: Backend complete from Phase 4. Frontend in Phase 9.
 
@@ -241,13 +241,13 @@
 
 ### Implementation for User Story 7
 
-- [ ] T700 [US7] Next.js project setup — App Router, shadcn/ui, Tailwind CSS, React Query in `frontend/`
+- [ ] T700 [US7] Next.js project setup — App Router, shadcn/ui, Tailwind CSS, TanStack Query (React Query) in `frontend/`
 - [ ] T701 [US7] Layout — sidebar navigation, header, main content area in `frontend/src/app/layout.tsx`
 - [ ] T702 [P] [US7] Dashboard page — company overview cards, quick actions, recent activity in `frontend/src/app/dashboard/page.tsx`
 - [ ] T703 [P] [US7] Company list page — search, sort, filter, add company modal in `frontend/src/app/companies/page.tsx`
 - [ ] T704 [US7] Company detail page — tab container (Overview, Documents, Financials, Chat, Analysis) in `frontend/src/app/companies/[id]/page.tsx`
 - [ ] T705 [P] [US7] Documents tab — upload modal, SEC fetch modal, document table with status badges, timeline in `frontend/src/components/documents/`
-- [ ] T706 [P] [US7] Financials tab — period selector, data table (metrics × years), metric charts, CSV export in `frontend/src/components/financials/`
+- [ ] T706 [P] [US6/US7] Financials tab — period selector, data table (metrics × years), metric charts, CSV export in `frontend/src/components/financials/`
 - [ ] T707 [US7] Chat tab — session list, streaming chat interface, message bubbles, source panel, typing indicator in `frontend/src/components/chat/`
 - [ ] T708 [US7] SSE client — parse event stream, render tokens incrementally, show sources on done in `frontend/src/lib/sse-client.ts`
 - [ ] T709 [P] [US7] Analysis tab — profile selector, run button, score card, criteria table, trend charts, AI summary in `frontend/src/components/analysis/`
@@ -272,12 +272,13 @@
 
 - [ ] T800 [P] Rate limiting implementation (100 req/min CRUD, 20 req/min chat) in `backend/app/api/middleware/`
 - [ ] T801 E2E tests — company journey, upload+chat journey, analysis journey in `backend/tests/e2e/`
-- [ ] T802 [P] Performance testing (Locust) — ingestion throughput, vector search latency, chat TTFT in `backend/tests/performance/`
+- [ ] T802 [P] Performance testing (Locust) — validate SC-004 (10-K ingestion < 5 min), SC-005 (API p95 < 500ms), SC-006 (chat TTFT < 2s), SC-007 (analysis 30 criteria × 10 years < 3s); define pass/fail thresholds in Locust config in `backend/tests/performance/`
 - [ ] T803 Review & approve Docker image config — verify multi-stage builds, non-root user, image size < 200 MB for T804 + T805 (review gate, no code output)
 - [ ] T804 [P] Backend Dockerfile (Python 3.12-slim, PyMuPDF deps, non-root) in `backend/Dockerfile`
 - [ ] T805 [P] Frontend Dockerfile (Node 20-alpine, standalone build) in `frontend/Dockerfile`
 - [ ] T806 CI/CD pipeline — GitHub Actions → build → test → push ACR → deploy Container Apps in `.github/workflows/`
 - [ ] T807 [P] Azure Monitor alerts (API errors, ingestion stuck, LLM failures, DB issues, memory) in `infra/modules/`
+- [ ] T807a [P] Azure Budget resource — create budget alerts at 80% ($40) and 100% ($50) of dev monthly budget via Bicep in `infra/modules/budget.bicep` (SC-010, Constitution IV)
 - [ ] T808 [P] Azure Portal dashboards (API performance, ingestion pipeline, LLM usage, infra health) in `infra/dashboards/`
 - [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total, llm_tokens_total with labels type=prompt|completion and model), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total, celery_workers_active) in `backend/app/observability/metrics.py` (Constitution VII)
 - [ ] T809 [P] README.md — local dev setup, architecture overview
