@@ -13,7 +13,7 @@
 | [`spec.md`](spec.md) | **WHAT & WHY** — User stories, acceptance criteria, functional requirements, success metrics |
 | [`plan.md`](plan.md) | **HOW** — Architecture, tech stack, infrastructure, data flows, security, observability |
 | [`data-model.md`](data-model.md) | ERD, entities, enums, JSONB schemas, Qdrant vector store |
-| [`tasks.md`](tasks.md) | 10-phase breakdown, ~105 tasks (T001 → T821), story-based organization with [P] parallel markers |
+| [`tasks.md`](tasks.md) | 10-phase breakdown, 137 tasks (T001 → T821), story-based organization with [P] parallel markers |
 | [`research.md`](research.md) | 10 key technical decisions with rationale and trade-offs |
 | [`quickstart.md`](quickstart.md) | 6 validation scenarios with curl commands, mapped to phases |
 | [`contracts/api-spec.md`](contracts/api-spec.md) | Full REST API contract — all endpoints, request/response shapes |

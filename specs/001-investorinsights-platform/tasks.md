@@ -25,6 +25,7 @@
 - [ ] T001 [P] Create project structure per plan.md — monorepo with `backend/`, `frontend/`, `infra/`, `scripts/`
 - [ ] T002 [P] Azure infrastructure provisioning via Bicep IaC in `infra/main.bicep` (Resource Group, PostgreSQL B1ms, Blob Storage, Key Vault, ACR, Log Analytics, App Insights, OpenAI, Container Apps env)
 - [ ] T003 [P] Bicep parameter files — `infra/parameters/dev.bicepparam` (budget-optimised) and `infra/parameters/prod.bicepparam` (full)
+- [ ] T003a [P] Infrastructure operational scripts — `infra/scripts/deploy.sh`, `infra/scripts/destroy.sh`, `infra/scripts/seed-keyvault.sh` per plan.md IaC layout
 - [ ] T004 [P] Docker Compose for local development in `docker-compose.dev.yml` (PostgreSQL, Redis, Qdrant, Azurite)
 - [ ] T005 FastAPI application skeleton with Uvicorn in `backend/app/main.py`, config loading
 - [ ] T006 [P] Pydantic `BaseSettings` configuration validation in `backend/app/config.py`
@@ -278,7 +279,7 @@
 - [ ] T806 CI/CD pipeline — GitHub Actions → build → test → push ACR → deploy Container Apps in `.github/workflows/`
 - [ ] T807 [P] Azure Monitor alerts (API errors, ingestion stuck, LLM failures, DB issues, memory) in `infra/modules/`
 - [ ] T808 [P] Azure Portal dashboards (API performance, ingestion pipeline, LLM usage, infra health) in `infra/dashboards/`
-- [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total, celery_workers_active) in `backend/app/observability/metrics.py` (Constitution VII)
+- [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total, llm_tokens_total with labels type=prompt|completion and model), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total, celery_workers_active) in `backend/app/observability/metrics.py` (Constitution VII)
 - [ ] T809 [P] README.md — local dev setup, architecture overview
 - [ ] T810 [P] DEPLOYMENT.md — Azure deployment guide (Bicep, az CLI, secrets, verification)
 - [ ] T812 Request validation hardening, error message review

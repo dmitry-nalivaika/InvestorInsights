@@ -35,7 +35,7 @@
 
 ### Ingestion Pipeline
 
-- [ ] **FR-300** System MUST chunk sections into 512–1024 token segments with overlap
+- [ ] **FR-300** System MUST chunk sections into ~768 token segments (configurable within 512–1024) with overlap
 - [ ] **FR-301** System MUST generate vector embeddings for each chunk
 - [ ] **FR-302** System MUST store embeddings in company-scoped vector collections
 - [ ] **FR-303** System MUST attach metadata to each vector

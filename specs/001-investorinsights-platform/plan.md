@@ -500,7 +500,7 @@ structlog with JSON output → OpenTelemetry → Application Insights. Standard 
 
 ### Metrics (OpenTelemetry → Application Insights)
 
-**Counters**: ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total
+**Counters**: ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total, llm_tokens_total (labels: type=prompt|completion, model)
 **Histograms**: ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds
 **Gauges**: companies_total, documents_total, vectors_total, celery_workers_active
 
