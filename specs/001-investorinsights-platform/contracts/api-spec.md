@@ -123,6 +123,7 @@ POST /api/v1/companies/{company_id}/documents:
     413: File too large
     415: Unsupported file type
     422: Validation error
+    503: Task broker (Redis) unavailable — document saved with status "uploaded" for later retry (FR-307)
 
 POST /api/v1/companies/{company_id}/documents/fetch-sec:
   description: Auto-fetch filings from SEC EDGAR
@@ -257,7 +258,7 @@ POST /api/v1/analysis/profiles:
         description: string (optional)
         formula: string (required — built-in name or custom expression)
         is_custom_formula: boolean (default: false)
-        comparison: string (required, enum: gt, gte, lt, lte, eq, between, trend_up, trend_down — per FR-502)
+        comparison: string (required, enum: >, >=, <, <=, =, between, trend_up, trend_down — per FR-502)
         threshold_value: number (conditional)
         threshold_low: number (conditional)
         threshold_high: number (conditional)
