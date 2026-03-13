@@ -75,7 +75,7 @@
 - [ ] T103 [US1] Company CRUD API — `POST/GET/PUT/DELETE /api/v1/companies` in `backend/app/api/companies.py`
 - [ ] T104 [US1] Unique ticker constraint enforcement (409 on duplicate)
 - [ ] T105 [US1] Company list with summary statistics (doc count, latest filing, readiness %) in `backend/app/api/companies.py`
-- [ ] T106 [US1] Company delete with CASCADE cleanup (all associated data) in `backend/app/services/company_service.py`
+- [ ] T106 [US1] Company delete with CASCADE cleanup (all associated data) within a single database transaction (NFR-203) in `backend/app/services/company_service.py`
 - [ ] T109 [US1] Company metadata update — `PUT /api/v1/companies/{id}` partial update (name, sector, industry, description override) in `backend/app/api/companies.py` (FR-104)
 - [ ] T110 [US1] Company search and filter — query params `?search=` (ticker, name) and `?sector=` on list endpoint in `backend/app/api/companies.py` (FR-106)
 
@@ -112,7 +112,7 @@
 - [ ] T212 [US2] Ingestion pipeline orchestrator — coordinates all stages (parse → split → chunk → embed; XBRL extraction in parallel via T303–T305), dispatched as Celery async task from document upload endpoint (FR-307), updates document status at each stage in `backend/app/ingestion/pipeline.py` (depends on T204–T211, T303–T305)
 - [ ] T213 [US2] Upload validation and corrupt file handling — magic-byte validation (PDF/HTML), file-size enforcement (50 MB max per FR-200), filename sanitisation, graceful error with human-readable messages per error type (corrupt PDF, unsupported format, oversized file), sets status to "error" with descriptive `error_message` in `backend/app/ingestion/pipeline.py`
 - [ ] T214 [US2] Document retry API — `POST /api/v1/companies/{id}/documents/{doc_id}/retry` (resumes pipeline from the failed stage, not from scratch) in `backend/app/api/documents.py`
-- [ ] T215 [US2] Document delete with cascade — remove file, vectors, sections, chunks, financials in `backend/app/services/document_service.py`
+- [ ] T215 [US2] Document delete with cascade — remove file, vectors, sections, chunks, financials within a single database transaction (NFR-203) in `backend/app/services/document_service.py`
 
 ### Implementation for User Story 2 — SEC EDGAR Integration
 
@@ -193,7 +193,7 @@
 - [ ] T507 [US4] Trend detection — OLS linear regression (improving/declining/stable, min 3 data points) in `backend/app/analysis/trend.py`
 - [ ] T508 [US4] Scoring — binary pass/fail × weight, null handling (no_data excluded from max), grade A–F in `backend/app/analysis/scorer.py`
 - [ ] T509 [US4] Analysis run API — `POST /api/v1/analysis/run` (1–10 companies × 1 profile) in `backend/app/api/analysis.py`
-- [ ] T510 [US4] Analysis results persistence (JSONB result_details, overall/max/pct scores) in `backend/app/services/analysis_service.py`
+- [ ] T510 [US4] Analysis results persistence (JSONB result_details, overall/max/pct scores) within a single database transaction (NFR-203) in `backend/app/services/analysis_service.py`
 - [ ] T511 [US4] AI narrative summary generation via LLM (strengths, concerns, data gaps). When LLM is unavailable, analysis completes successfully with summary=null (NFR-401). in `backend/app/services/analysis_service.py`
 - [ ] T512 [US4] Analysis results API — `GET /api/v1/analysis/results`, `GET /api/v1/analysis/results/{id}` in `backend/app/api/analysis.py`
 - [ ] T513 [P] [US4] Built-in formulas list API — `GET /api/v1/analysis/formulas` in `backend/app/api/analysis.py`
@@ -281,6 +281,7 @@
 - [ ] T800a [P] Rate limiting tests — verify 100/min CRUD and 20/min chat enforcement, 429 responses in `backend/tests/integration/test_rate_limiting.py`
 - [ ] T801 E2E tests — company journey, upload+chat journey, analysis journey in `backend/tests/e2e/`
 - [ ] T802 [P] Performance testing (Locust) — validate SC-004 (10-K ingestion < 5 min), SC-005 (API p95 < 500ms), SC-006 (chat TTFT < 2s), SC-007 (analysis 30 criteria × 10 years < 3s), NFR-103 (vector search top-15 < 200ms), SC-008 (scale seed: 100 companies, 50 docs each, 500K+ vectors); define pass/fail thresholds in Locust config in `backend/tests/performance/`
+- [ ] T802a API and database performance tuning review — verify SQLAlchemy async connection pool sizing, add database query indexes for hot paths (company list with stats, document list with filters, financial data lookups), ensure eager/lazy loading strategies are correct, review Qdrant HNSW ef_search parameter for query-time performance (NFR-100, NFR-103, NFR-104) in `backend/app/`
 - [ ] T803 Review & approve Docker image config — verify multi-stage builds, non-root user, image size < 200 MB for T804 + T805 (review gate, no code output)
 - [ ] T804 [P] Backend Dockerfile (Python 3.12-slim, PyMuPDF deps, non-root) in `backend/Dockerfile`
 - [ ] T805 [P] Frontend Dockerfile (Node 20-alpine, standalone build) in `frontend/Dockerfile`
