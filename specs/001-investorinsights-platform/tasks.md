@@ -50,8 +50,9 @@
 - [ ] T016 Qdrant client wrapper with collection management in `backend/app/clients/qdrant_client.py`
 - [ ] T017 [P] Redis client wrapper in `backend/app/clients/redis_client.py`
 - [ ] T018 Celery worker setup with Redis broker, ingestion/analysis/sec_fetch queues in `backend/app/worker/`
-- [ ] T019 [P] SEC EDGAR base client (HTTP with rate limiting, User-Agent) in `backend/app/clients/sec_client.py`
+- [ ] T019 [P] SEC EDGAR base client (HTTP with token-bucket rate limiter enforcing ≤10 req/s per FR-206, User-Agent header) in `backend/app/clients/sec_client.py`
 - [ ] T020 [P] Azure OpenAI client wrapper (embeddings + chat) in `backend/app/clients/openai_client.py`
+- [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total, llm_tokens_total with labels type=prompt|completion and model), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total, celery_workers_active) in `backend/app/observability/metrics.py` (Constitution VII — placed in Foundational so all subsequent phases emit metrics from the start)
 
 **Checkpoint**: Foundation ready — user story implementation can now begin in parallel
 
@@ -107,12 +108,12 @@
 - [ ] T211 [US2] Vector upsert to Qdrant with metadata payload in `backend/app/ingestion/embedder.py`
 - [ ] T212 [US2] Ingestion pipeline orchestrator — coordinates all stages (parse → split → chunk → embed; XBRL extraction in parallel via T303–T305), dispatched as Celery async task from document upload endpoint (FR-307), updates document status at each stage in `backend/app/ingestion/pipeline.py` (depends on T204–T211, T303–T305)
 - [ ] T213 [US2] Upload validation and corrupt file handling — magic-byte validation (PDF/HTML), file-size enforcement (50 MB max per FR-200), filename sanitisation, graceful error with human-readable messages per error type (corrupt PDF, unsupported format, oversized file), sets status to "error" with descriptive `error_message` in `backend/app/ingestion/pipeline.py`
-- [ ] T214 [US2] Document retry API — `POST /api/v1/companies/{id}/documents/{doc_id}/retry` (re-run from failed stage) in `backend/app/api/documents.py`
+- [ ] T214 [US2] Document retry API — `POST /api/v1/companies/{id}/documents/{doc_id}/retry` (resumes pipeline from the failed stage, not from scratch) in `backend/app/api/documents.py`
 - [ ] T215 [US2] Document delete with cascade — remove file, vectors, sections, chunks, financials in `backend/app/services/document_service.py`
 
 ### Implementation for User Story 2 — SEC EDGAR Integration
 
-- [ ] T300 [P] [US2] SEC EDGAR filing index fetcher — list available filings for company/CIK in `backend/app/clients/sec_client.py`
+- [ ] T300 [P] [US2] SEC EDGAR filing index fetcher — list available filings for company/CIK in `backend/app/clients/sec_client.py` (extends SEC client from T101 with filing-level operations)
 - [ ] T301 [P] [US2] SEC EDGAR filing downloader — fetch actual filing documents in `backend/app/clients/sec_client.py`
 - [ ] T303 [P] [US2] XBRL `companyfacts` API integration — fetch structured financial data in `backend/app/clients/sec_xbrl_client.py`
 - [ ] T304 [US2] XBRL tag → internal schema mapper (60+ US-GAAP tags) in `backend/app/ingestion/xbrl_mapper.py`
@@ -132,6 +133,7 @@
 - [ ] T311 [P] [US2] Unit tests — parser, splitter, chunker, cleaner, XBRL mapper in `backend/tests/unit/test_ingestion.py`
 - [ ] T312 [P] [US2] Integration tests — full pipeline (upload → Celery dispatch → ready) in `backend/tests/integration/test_ingestion_pipeline.py`
 - [ ] T313 [P] [US2] Integration tests — SEC fetch + XBRL extract flow in `backend/tests/integration/test_sec_fetch.py`
+- [ ] T818 [US2] Ingestion idempotency verification — re-running full pipeline on already-ingested document produces identical chunks, vectors, and financial data (SC-012, NFR-202) in `backend/tests/integration/test_idempotency.py`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -163,8 +165,8 @@
 
 ### Tests for User Story 3
 
-- [ ] T413 [P] [US3] Unit tests — prompt builder, retrieval logic, context assembly in `backend/tests/unit/test_chat_agent.py`
-- [ ] T414 [P] [US3] Integration tests — full chat flow (mocked LLM) in `backend/tests/integration/test_chat_api.py`
+- [ ] T413 [P] [US3] Unit tests — prompt builder, retrieval logic, context assembly, out-of-scope refusal (at least 5 prompt variants: future prediction, buy/sell recommendation, unrelated topic, personal opinion, external data request per SC-003) in `backend/tests/unit/test_chat_agent.py`
+- [ ] T414 [P] [US3] Integration tests — full chat flow (mocked LLM), assert source citations are present in responses for on-topic queries (SC-002 validation) in `backend/tests/integration/test_chat_api.py`
 
 **Checkpoint**: At this point, User Stories 1, 2, AND 3 should all work independently — core MVP complete
 
@@ -189,7 +191,7 @@
 - [ ] T508 [US4] Scoring — binary pass/fail × weight, null handling (no_data excluded from max), grade A–F in `backend/app/analysis/scorer.py`
 - [ ] T509 [US4] Analysis run API — `POST /api/v1/analysis/run` (1–10 companies × 1 profile) in `backend/app/api/analysis.py`
 - [ ] T510 [US4] Analysis results persistence (JSONB result_details, overall/max/pct scores) in `backend/app/services/analysis_service.py`
-- [ ] T511 [US4] AI narrative summary generation via LLM (strengths, concerns, data gaps) in `backend/app/services/analysis_service.py`
+- [ ] T511 [US4] AI narrative summary generation via LLM (strengths, concerns, data gaps). When LLM is unavailable, analysis completes successfully with summary=null (NFR-401). in `backend/app/services/analysis_service.py`
 - [ ] T512 [US4] Analysis results API — `GET /api/v1/analysis/results`, `GET /api/v1/analysis/results/{id}` in `backend/app/api/analysis.py`
 - [ ] T513 [P] [US4] Built-in formulas list API — `GET /api/v1/analysis/formulas` in `backend/app/api/analysis.py`
 - [ ] T517 [US4] Analysis results JSON export — `GET /api/v1/analysis/results/{id}/export` returns full result as downloadable JSON in `backend/app/api/analysis.py` (FR-601)
@@ -283,7 +285,6 @@
 - [ ] T807 [P] Azure Monitor alerts (API errors, ingestion stuck, LLM failures, DB issues, memory) in `infra/modules/`
 - [ ] T807a [P] Azure Budget resource — create budget alerts at 80% ($40) and 100% ($50) of dev monthly budget via Bicep in `infra/modules/budget.bicep` (SC-010, Constitution IV)
 - [ ] T808 [P] Azure Portal dashboards (API performance, ingestion pipeline, LLM usage, infra health) in `infra/dashboards/`
-- [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total, llm_tokens_total with labels type=prompt|completion and model), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total, celery_workers_active) in `backend/app/observability/metrics.py` (Constitution VII)
 - [ ] T809 [P] README.md — local dev setup, architecture overview
 - [ ] T810 [P] DEPLOYMENT.md — Azure deployment guide (Bicep, az CLI, secrets, verification)
 - [ ] T812 Request validation hardening, error message review, and database transaction boundary audit (NFR-203: multi-step mutations use transactions)
@@ -294,7 +295,6 @@
 - [ ] T820 [P] No-XBRL-data handling — filings without XBRL data log warning, store available data, do not block text ingestion in `backend/app/ingestion/pipeline.py`
 - [ ] T821 [P] Budget monitoring runbook — document manual scale-to-zero procedure, gpt-4o-mini switch, Redis removal steps for when $50/month dev budget is at risk in `docs/runbooks/budget-breach.md` (Constitution IV, spec edge case)
 - [ ] T816 Run quickstart.md validation — all 6 scenarios pass
-- [ ] T818 Ingestion idempotency verification — re-running full pipeline on already-ingested document produces identical chunks, vectors, and financial data (SC-012) in `backend/tests/integration/test_idempotency.py`
 
 ---
 

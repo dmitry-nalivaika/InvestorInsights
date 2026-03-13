@@ -444,7 +444,7 @@ Expression syntax: field references (`income_statement.revenue`), operators (`+ 
 
 ### Trend Detection
 
-OLS linear regression over available years (minimum 3 non-null values). Normalised slope > +3% → improving, < -3% → declining, otherwise → stable.
+OLS linear regression over available years (minimum 3 non-null values). Normalised slope = OLS slope / mean of non-null values. Normalised slope > +3% → improving, < -3% → declining, otherwise → stable.
 
 ### Scoring
 
@@ -589,7 +589,9 @@ User                  API                   ChatAgent          Qdrant  AzureOpen
 User                  API              AnalysisEngine         Postgres  AzureOpenAI
   │                    │                      │                  │          │
   │── POST /analysis  ─▶│                     │                  │          │
-  │   /run/{co}/{prof}  │                     │                  │          │
+  │   /run              │                     │                  │          │
+  │  {company_ids,      │                     │                  │          │
+  │   profile_id}       │                     │                  │          │
   │                    │── load financials ────────────────────────▶│       │
   │                    │── load criteria ──────────────────────────▶│       │
   │                    │── run engine ────────▶│                  │          │

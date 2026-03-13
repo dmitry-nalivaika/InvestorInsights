@@ -40,7 +40,7 @@ As an analyst, I want to upload SEC filings (PDF/HTML) or auto-fetch them from E
 1. **Given** a company exists, **When** I upload a 10-K PDF with filing metadata, **Then** the file is stored, queued for processing, and I receive immediate acknowledgement with a document ID.
 2. **Given** a document is uploaded, **When** processing completes, **Then** its status progresses through `uploaded → parsing → parsed → embedding → ready`.
 3. **Given** a company with a CIK, **When** I trigger auto-fetch for the last 10 years, **Then** the system downloads all 10-K/10-Q filings from EDGAR, respecting rate limits, skipping duplicates.
-4. **Given** a document in "error" status, **When** I retry ingestion, **Then** it re-runs the full pipeline from the failed stage.
+4. **Given** a document in "error" status, **When** I retry ingestion, **Then** it resumes the pipeline from the failed stage, not from scratch.
 5. **Given** a document in "ready" status, **When** I delete it, **Then** the file, all chunks from vector DB, section records, and associated financial data are removed.
 6. **Given** an upload for a period that already exists, **When** submitted, **Then** I receive a 409 duplicate error.
 7. **Given** a corrupt PDF, **When** processing runs, **Then** it fails gracefully with a clear error message and the status is "error".
@@ -135,6 +135,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 3. **Given** the chat tab, **When** I send a message, **Then** tokens stream in real-time, sources are shown after completion, and I can browse past sessions.
 4. **Given** any loading operation, **When** in progress, **Then** appropriate loading indicators are shown.
 5. **Given** any error, **When** it occurs, **Then** a human-readable message with suggested action is displayed.
+6. **Given** the Settings page, **When** I view it, **Then** I see read-only display of current LLM, embedding, and ingestion configuration. (Note: V1 Settings is UI-only — no backend settings API. Configuration is managed via environment variables per plan.md Configuration Management.)
 
 ---
 
@@ -169,16 +170,16 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-202**: System MUST store uploaded files organized by company/type/year
 - **FR-203**: System MUST prevent duplicate uploads (same company + doc_type + year + quarter)
 - **FR-204**: System MUST track document processing status: uploaded → parsing → parsed → embedding → ready → error
-- **FR-205**: System MUST support automatic fetching of filings from SEC EDGAR given a CIK and year range (default: 10-K and 10-Q filings, last 10 years; see API contract for configurable parameters)
+- **FR-205**: System MUST support automatic fetching of filings from SEC EDGAR given a CIK and year range (default: 10-K and 10-Q filings, last 10 years; see API contract for configurable parameters). Returns a task_id for progress polling via `GET /api/v1/tasks/{task_id}`.
 - **FR-206**: System MUST respect SEC EDGAR rate limits (max 10 requests/second)
 - **FR-207**: System MUST extract text from PDF files preserving paragraph structure
 - **FR-208**: System MUST extract text from HTML filings preserving content structure
 - **FR-209**: System MUST split extracted text into SEC filing sections using pattern matching
-- **FR-210**: System SHOULD support re-processing a document from any failed stage
+- **FR-210**: System SHOULD support resuming document re-processing from the failed stage (not from scratch)
 - **FR-211**: System SHOULD support deletion of individual documents with cascade cleanup
 
 **Ingestion Pipeline**
-- **FR-300**: System MUST chunk document sections into segments of ~768 tokens (configurable within 512–1024) with 10–20% overlap
+- **FR-300**: System MUST chunk document sections into segments of 768 tokens (configurable within 512–1024) with 128-token overlap (tiktoken cl100k_base tokenizer)
 - **FR-301**: System MUST generate vector embeddings for each chunk
 - **FR-302**: System MUST store embeddings in a vector database in a company-scoped collection
 - **FR-303**: System MUST attach metadata to each vector (company_id, document_id, doc_type, fiscal_year, section_key, etc.)
@@ -191,14 +192,14 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 **Chat Agent**
 - **FR-400**: System MUST provide a conversational AI agent scoped to a single company per session
 - **FR-401**: System MUST retrieve top-K relevant chunks via semantic similarity search (configurable top-K, default 15, max 50; configurable score threshold, default 0.65)
-- **FR-402**: System MUST inject retrieved chunks as context into the LLM prompt
+- **FR-402**: System MUST inject retrieved chunks as context into the LLM prompt (max 12,000 tokens context budget; max 4,096 tokens response budget)
 - **FR-403**: System MUST stream LLM responses token-by-token via Server-Sent Events
 - **FR-404**: System MUST include source citations in responses (document type, year, section)
-- **FR-405**: System MUST maintain conversation history within a session (configurable limit, default 10 exchanges, 4000 token history budget; see plan.md RAG Chat Agent Detail for additional context and response token budgets)
+- **FR-405**: System MUST maintain conversation history within a session (configurable limit, default 10 exchanges, 4000 token history budget — whichever limit is reached first; see plan.md RAG Chat Agent Detail for additional context and response token budgets)
 - **FR-406**: System MUST persist chat sessions and messages for later retrieval
 - **FR-407**: System MUST instruct the LLM to refuse speculation beyond the filing data
 - **FR-408**: System MUST return retrieved source chunks with metadata alongside the response
-- **FR-409**: System MUST support LLM-based query expansion (generate 2–3 alternative queries) to improve retrieval recall, controllable via retrieval config toggle
+- **FR-409**: System MUST support LLM-based query expansion (generate 2–3 alternative queries, union results with original, deduplicate by chunk_id, re-rank by max score) to improve retrieval recall, controllable via retrieval config toggle
 - **FR-413**: System MUST handle the case where no relevant chunks are found
 
 **Financial Analysis Engine**
@@ -209,7 +210,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-504**: System MUST handle division-by-zero in formula evaluation gracefully (return null, mark criterion "no_data")
 - **FR-505**: System MUST compute each criterion's value across all available years within the lookback window
 - **FR-506**: System MUST determine pass/fail based on latest value vs. threshold
-- **FR-507**: System MUST compute trend direction (improving/declining/stable) using OLS linear regression over available years (minimum 3 non-null data points; normalised slope > +3% → improving, < −3% → declining, otherwise → stable)
+- **FR-507**: System MUST compute trend direction (improving/declining/stable) using OLS linear regression over available years (minimum 3 non-null data points; normalised slope = OLS slope / mean of non-null values; normalised slope > +3% → improving, < −3% → declining, otherwise → stable)
 - **FR-508**: System MUST compute an overall weighted score and percentage
 - **FR-509**: System MUST persist analysis results for historical comparison
 - **FR-510**: System MUST assign letter grades based on percentage score: A (90–100%), B (75–89%), C (60–74%), D (40–59%), F (0–39%)
@@ -218,12 +219,48 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-513**: System MUST provide a list of all available built-in formulas via API
 - **FR-514**: System SHOULD support comparing multiple companies against the same profile
 - **FR-515**: System SHOULD generate an AI narrative summary of analysis results
-- **FR-516**: System MUST support criteria categories: profitability, valuation, growth, liquidity, solvency, efficiency, dividend, quality, custom
+- **FR-516**: System MUST support criteria categories: profitability, valuation (V1: custom formulas only — market price data is out of scope), growth, liquidity, solvency, efficiency, dividend, quality, custom
 - **FR-517**: System MUST support year-over-year growth formulas that reference previous period data
 
 **Data Export**
 - **FR-600**: System SHOULD support exporting financial data to CSV format
 - **FR-601**: System MUST support exporting analysis results to JSON format
+
+### Non-Functional Requirements
+
+**Performance**
+- **NFR-100**: API response time for non-streaming endpoints MUST be under 500ms at p95
+- **NFR-101**: Time-to-first-token for chat streaming responses MUST be under 2 seconds
+- **NFR-102**: A single 200-page 10-K MUST be fully ingested in under 5 minutes
+- **NFR-103**: Vector similarity search (top-15) MUST complete in under 200ms
+- **NFR-104**: Analysis of 30 criteria across 10 years of data MUST complete in under 3 seconds
+
+**Scalability**
+- **NFR-200**: System MUST support at least 100 companies with 50 documents each (5,000 total documents, 500K+ vectors)
+
+**Data Integrity**
+- **NFR-201**: All analysis criteria pass/fail determinations MUST be deterministic and reproducible for the same input data
+- **NFR-202**: Ingestion pipeline MUST be idempotent — re-running produces the same result
+- **NFR-203**: Multi-step mutations MUST use database transactions to ensure atomicity (company delete cascade, document delete cascade, analysis result persistence)
+
+**Security**
+- **NFR-300**: All endpoints except `/health` MUST require API key authentication
+- **NFR-301**: User input MUST never appear in LLM system prompts
+- **NFR-302**: File uploads MUST be validated via magic bytes (not just extension) and capped at 50 MB
+
+**Reliability**
+- **NFR-400**: External service failures (Azure OpenAI, SEC EDGAR, Qdrant) MUST NOT crash the application — circuit breakers and fallbacks MUST be implemented
+- **NFR-401**: When Azure OpenAI is unavailable, CRUD operations and analysis (without AI summary) MUST still function
+- **NFR-402**: When Qdrant is unavailable, CRUD operations and financial analysis MUST still function; chat returns a clear "unavailable" message
+
+**Observability**
+- **NFR-500**: All operations MUST carry a `request_id` for distributed tracing
+- **NFR-501**: Structured logging (JSON) MUST be exported via OpenTelemetry to Azure Monitor / Application Insights
+- **NFR-502**: Custom metrics MUST be emitted for ingestion throughput, LLM token usage, chat retrieval duration, and analysis duration
+- **NFR-503**: No sensitive data (API keys, file contents, full chat messages) MUST appear in logs
+
+**Cost**
+- **NFR-600**: Development environment Azure cost MUST stay within the $50/month budget
 
 ### Key Entities
 

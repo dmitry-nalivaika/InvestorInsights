@@ -96,6 +96,10 @@
                    └─────────────────┘
 ```
 
+### Async Task Status Storage
+
+Async task status (for SEC EDGAR fetch and bulk operations tracked via `GET /api/v1/tasks/{task_id}`) is stored in the **Celery result backend (Redis)**. No dedicated PostgreSQL table is required. Task metadata (task_id, status, progress, result, error) is written by Celery workers and read by the API layer via the Celery `AsyncResult` interface. If Redis is unavailable, task status queries return a "status unavailable" response; the underlying tasks still execute.
+
 ---
 
 ## Complete DDL

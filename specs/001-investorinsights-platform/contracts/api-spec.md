@@ -11,7 +11,7 @@
 base_url: /api/v1
 content_type: application/json
 authentication: X-API-Key header
-pagination: offset/limit with Link headers
+pagination: offset/limit (response includes total, limit, offset)
 error_format:
   status: integer
   error: string
@@ -163,7 +163,7 @@ GET /api/v1/companies/{company_id}/documents/{document_id}:
       financial_data_extracted: boolean
 
 POST /api/v1/companies/{company_id}/documents/{document_id}/retry:
-  description: Retry failed ingestion — re-runs pipeline from the failed stage, not from scratch (FR-210)
+  description: Retry failed ingestion — resumes pipeline from the failed stage, not from scratch (FR-210)
   response: 202 Accepted
   errors:
     404: Document not found
@@ -278,7 +278,7 @@ GET /api/v1/analysis/profiles/{profile_id}:
   response: 200 OK
 
 PUT /api/v1/analysis/profiles/{profile_id}:
-  description: Update profile (increments version)
+  description: Update profile (increments version). Existing analysis results retain the profile_version snapshot they were computed against; new runs use the incremented version.
   request_body: same as POST
   response: 200 OK
 
