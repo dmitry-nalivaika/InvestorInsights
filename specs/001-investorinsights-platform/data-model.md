@@ -27,7 +27,7 @@
        │             │ page_count       │     │ id (PK)          │
        │             │ created_at       │     │ section_id (FK)  │
        │             │ updated_at       │     │ document_id (FK) │
-       │             └──────┬───────────┘     │ company_id (FK)  │
+       │             └──────┬───────────┘     │ company_id (FK) ←── companies.id (denormalised)
        │                    │                 │ chunk_index      │
        │                    │ 1:N             │ content          │
        │                    ▼                 │ token_count      │
@@ -63,9 +63,11 @@
        │           │ name            │   1:N │ profile_id (FK)  │
        │           │ description     │       │ name             │
        │           │ is_default      │       │ category         │
+       │           │ version         │       │ description      │
        │           │ created_at      │       │ formula          │
-       │           │ updated_at      │       │ comparison       │
-       │           └──────┬──────────┘       │ threshold_value  │
+       │           │ updated_at      │       │ is_custom_formula│
+       │           └──────┬──────────┘       │ comparison       │
+       │                  │                  │ threshold_value  │
        │                  │                  │ threshold_low    │
        │                  │                  │ threshold_high   │
        │                  │                  │ weight           │
@@ -80,10 +82,14 @@
        ├──────────▶│ id (PK)         │
              1:N   │ company_id (FK) │
                    │ profile_id (FK) │
+                   │ profile_version │
                    │ run_at          │
                    │ overall_score   │
                    │ max_score       │
                    │ pct_score       │
+                   │ criteria_count  │
+                   │ passed_count    │
+                   │ failed_count    │
                    │ result_details  │
                    │   (JSONB)       │
                    │ summary         │

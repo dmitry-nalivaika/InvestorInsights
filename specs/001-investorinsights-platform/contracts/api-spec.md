@@ -163,7 +163,7 @@ GET /api/v1/companies/{company_id}/documents/{document_id}:
       financial_data_extracted: boolean
 
 POST /api/v1/companies/{company_id}/documents/{document_id}/retry:
-  description: Retry failed ingestion
+  description: Retry failed ingestion — re-runs pipeline from the failed stage, not from scratch (FR-210)
   response: 202 Accepted
   errors:
     404: Document not found
@@ -301,6 +301,7 @@ POST /api/v1/analysis/run:
           overall_score: number
           max_score: number
           pct_score: number
+          grade: string (A|B|C|D|F — per FR-510: A 90–100%, B 75–89%, C 60–74%, D 40–59%, F 0–39%)
           passed_count: integer
           failed_count: integer
           criteria_results: CriteriaResult[]

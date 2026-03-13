@@ -308,7 +308,8 @@ infra/
 ├── dashboards/
 │   ├── api-performance.json
 │   ├── ingestion-pipeline.json
-│   └── llm-usage.json
+│   ├── llm-usage.json
+│   └── infra-health.json
 └── scripts/
     ├── deploy.sh
     ├── destroy.sh
@@ -385,7 +386,7 @@ separators: ["\n\n\n", "\n\n", "\n", ". ", " "]
 ```yaml
 provider: azure_openai
 model: text-embedding-3-large
-dimensions: 3072
+dimensions: 3072  # full dimensionality, no reduction via API dimensions parameter
 batch_size: 64
 rate_limit: 3000 requests/minute
 ```

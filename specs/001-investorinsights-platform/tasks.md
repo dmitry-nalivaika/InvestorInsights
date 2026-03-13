@@ -22,7 +22,7 @@
 
 **Purpose**: Project initialization, Azure infrastructure, and basic application skeleton
 
-- [ ] T001 [P] Create project structure per plan.md — monorepo with `backend/`, `frontend/`, `infra/`, `scripts/`
+- [ ] T001 [P] Create project structure per plan.md — monorepo with `backend/`, `frontend/`, `infra/`, `scripts/`; include linting config files (`pyproject.toml` with Ruff + mypy settings for backend)
 - [ ] T002 [P] Azure infrastructure provisioning via Bicep IaC in `infra/main.bicep` (Resource Group, PostgreSQL B1ms, Blob Storage, Key Vault, ACR, Log Analytics, App Insights, OpenAI, Container Apps env)
 - [ ] T003 [P] Bicep parameter files — `infra/parameters/dev.bicepparam` (budget-optimised) and `infra/parameters/prod.bicepparam` (full)
 - [ ] T003a [P] Infrastructure operational scripts — `infra/scripts/deploy.sh`, `infra/scripts/destroy.sh`, `infra/scripts/seed-keyvault.sh` per plan.md IaC layout
@@ -93,6 +93,7 @@
 ### Implementation for User Story 2 — Document Ingestion
 
 - [ ] T200 [P] [US2] Document upload API — `POST /api/v1/companies/{id}/documents` (multipart) in `backend/app/api/documents.py`
+- [ ] T200a [P] [US2] Document list and detail APIs — `GET /api/v1/companies/{id}/documents` (with filters: doc_type, fiscal_year, status) and `GET /api/v1/companies/{id}/documents/{doc_id}` (with sections, chunk_count, financial_data_extracted) in `backend/app/api/documents.py`
 - [ ] T201 [P] [US2] File storage in Azure Blob Storage (organised by company/type/year) in `backend/app/services/document_service.py`
 - [ ] T202 [US2] Document status state machine (uploaded → parsing → parsed → embedding → ready → error) in `backend/app/models/document.py`
 - [ ] T203 [US2] Duplicate upload prevention (409 for same company + type + year + quarter) in `backend/app/services/document_service.py`
@@ -101,12 +102,12 @@
 - [ ] T206 [US2] Text cleaning and normalisation (Unicode, whitespace, headers/footers, tables → markdown) in `backend/app/ingestion/text_cleaner.py`
 - [ ] T207 [US2] Section splitter — regex-based for 10-K Items (1, 1A, 1B, 1C, 2, 3, 5, 6, 7, 7A, 8, 9A) and 10-Q in `backend/app/ingestion/section_splitter.py`
 - [ ] T208 [US2] Text chunker — recursive character splitter (768 tokens, 128 overlap, tiktoken) in `backend/app/ingestion/chunker.py`
-- [ ] T209 [US2] Qdrant collection management — create per-company collection (3072 dims, cosine) in `backend/app/clients/qdrant_client.py`
+- [ ] T209 [US2] Qdrant collection management — create per-company collection (3072 dims, cosine) using generic client from T016 in `backend/app/clients/qdrant_client.py`
 - [ ] T210 [US2] Azure OpenAI embedding integration — batch embed chunks (text-embedding-3-large) in `backend/app/ingestion/embedder.py`
 - [ ] T211 [US2] Vector upsert to Qdrant with metadata payload in `backend/app/ingestion/embedder.py`
 - [ ] T212 [US2] Ingestion pipeline orchestrator — coordinates all stages (parse → split → chunk → embed; XBRL extraction in parallel via T303–T305), dispatched as Celery async task from document upload endpoint (FR-307), updates document status at each stage in `backend/app/ingestion/pipeline.py` (depends on T204–T211, T303–T305)
 - [ ] T213 [US2] Upload validation and corrupt file handling — magic-byte validation (PDF/HTML), file-size enforcement (50 MB max per FR-200), filename sanitisation, graceful error with human-readable messages per error type (corrupt PDF, unsupported format, oversized file), sets status to "error" with descriptive `error_message` in `backend/app/ingestion/pipeline.py`
-- [ ] T214 [US2] Document retry API — `POST /api/v1/documents/{id}/retry` (re-run from failed stage) in `backend/app/api/documents.py`
+- [ ] T214 [US2] Document retry API — `POST /api/v1/companies/{id}/documents/{doc_id}/retry` (re-run from failed stage) in `backend/app/api/documents.py`
 - [ ] T215 [US2] Document delete with cascade — remove file, vectors, sections, chunks, financials in `backend/app/services/document_service.py`
 
 ### Implementation for User Story 2 — SEC EDGAR Integration
@@ -151,6 +152,7 @@
 - [ ] T404 [US3] Context assembly — retrieved chunks + conversation history within token budget in `backend/app/services/chat_agent.py` (depends on T402, T403)
 - [ ] T405 [US3] Azure OpenAI chat completion with streaming (SSE, with direct OpenAI fallback) in `backend/app/clients/openai_client.py`
 - [ ] T406 [US3] SSE endpoint — `POST /api/v1/companies/{id}/chat` with event types: session, sources, token, done, error in `backend/app/api/chat.py`
+- [ ] T406a [US3] Chat session CRUD routes — `GET /api/v1/companies/{id}/chat/sessions`, `GET .../sessions/{session_id}`, `DELETE .../sessions/{session_id}` in `backend/app/api/chat.py`
 - [ ] T407 [US3] Source citation extraction and formatting in `backend/app/services/chat_agent.py`
 - [ ] T408 [US3] Conversation history management (last N exchanges, configurable, token budget) in `backend/app/services/chat_service.py`
 - [ ] T409 [P] [US3] Session title auto-generation (from first user message) in `backend/app/services/chat_service.py`
@@ -211,7 +213,7 @@
 ### Implementation for User Story 5
 
 - [ ] T600 [US5] Multi-company comparison — run same profile against 2–10 companies in `backend/app/services/analysis_service.py`
-- [ ] T601 [US5] Comparison response format — ranked by overall score, per-criterion per-company in `backend/app/api/analysis.py`
+- [ ] T601 [US5] Comparison response format — ranked by overall score, per-criterion per-company in `backend/app/api/analysis.py` (export reuses `GET /api/v1/analysis/results/{id}/export` from T517 per individual result)
 
 ### Tests for User Story 5
 
@@ -241,7 +243,7 @@
 
 ### Implementation for User Story 7
 
-- [ ] T700 [US7] Next.js project setup — App Router, shadcn/ui, Tailwind CSS, TanStack Query (React Query) in `frontend/`
+- [ ] T700 [US7] Next.js project setup — App Router, shadcn/ui, Tailwind CSS, TanStack Query (React Query), ESLint + Prettier config in `frontend/`
 - [ ] T701 [US7] Layout — sidebar navigation, header, main content area in `frontend/src/app/layout.tsx`
 - [ ] T702 [P] [US7] Dashboard page — company overview cards, quick actions, recent activity in `frontend/src/app/dashboard/page.tsx`
 - [ ] T703 [P] [US7] Company list page — search, sort, filter, add company modal in `frontend/src/app/companies/page.tsx`
@@ -271,8 +273,9 @@
 **Purpose**: Improvements that affect multiple user stories
 
 - [ ] T800 [P] Rate limiting implementation (100 req/min CRUD, 20 req/min chat) in `backend/app/api/middleware/`
+- [ ] T800a [P] Rate limiting tests — verify 100/min CRUD and 20/min chat enforcement, 429 responses in `backend/tests/integration/test_rate_limiting.py`
 - [ ] T801 E2E tests — company journey, upload+chat journey, analysis journey in `backend/tests/e2e/`
-- [ ] T802 [P] Performance testing (Locust) — validate SC-004 (10-K ingestion < 5 min), SC-005 (API p95 < 500ms), SC-006 (chat TTFT < 2s), SC-007 (analysis 30 criteria × 10 years < 3s); define pass/fail thresholds in Locust config in `backend/tests/performance/`
+- [ ] T802 [P] Performance testing (Locust) — validate SC-004 (10-K ingestion < 5 min), SC-005 (API p95 < 500ms), SC-006 (chat TTFT < 2s), SC-007 (analysis 30 criteria × 10 years < 3s), NFR-103 (vector search top-15 < 200ms), SC-008 (scale seed: 100 companies, 50 docs each, 500K+ vectors); define pass/fail thresholds in Locust config in `backend/tests/performance/`
 - [ ] T803 Review & approve Docker image config — verify multi-stage builds, non-root user, image size < 200 MB for T804 + T805 (review gate, no code output)
 - [ ] T804 [P] Backend Dockerfile (Python 3.12-slim, PyMuPDF deps, non-root) in `backend/Dockerfile`
 - [ ] T805 [P] Frontend Dockerfile (Node 20-alpine, standalone build) in `frontend/Dockerfile`
@@ -283,7 +286,7 @@
 - [ ] T817 [P] Custom OpenTelemetry metric instrumentation — counters (ingestion_documents_total, chat_messages_total, analysis_runs_total, llm_api_calls_total, llm_tokens_total with labels type=prompt|completion and model), histograms (ingestion_duration_seconds, chat_retrieval_duration_seconds, chat_llm_duration_seconds, analysis_duration_seconds), gauges (companies_total, documents_total, vectors_total, celery_workers_active) in `backend/app/observability/metrics.py` (Constitution VII)
 - [ ] T809 [P] README.md — local dev setup, architecture overview
 - [ ] T810 [P] DEPLOYMENT.md — Azure deployment guide (Bicep, az CLI, secrets, verification)
-- [ ] T812 Request validation hardening, error message review
+- [ ] T812 Request validation hardening, error message review, and database transaction boundary audit (NFR-203: multi-step mutations use transactions)
 - [ ] T813 [P] Log output review — no sensitive data, proper App Insights integration
 - [ ] T814 [P] Dependency security audit
 - [ ] T815 Circuit breaker implementation (Azure OpenAI, SEC EDGAR, Qdrant) in `backend/app/clients/`
