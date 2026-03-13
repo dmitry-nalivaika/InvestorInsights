@@ -148,6 +148,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - What happens with very large filings (300+ pages)? → System processes them within the 5-minute target; chunking handles any document size.
 - What happens when a custom formula divides by zero? → Returns null, criterion marked "no_data", not a crash.
 - What happens when the $50/month dev budget is at risk? → Azure Budget alerts fire at 80% ($40) and 100% ($50). V1: Manual operator action per budget-breach runbook — scale-to-zero on all containers, switch to gpt-4o-mini, no managed Redis. V2: Automated budget monitoring and model downgrade.
+- What happens when Redis is unavailable? → Celery task dispatch may be delayed until the broker recovers; async task status polling (`GET /api/v1/tasks/{task_id}`) returns a "status unavailable" response. Underlying tasks still execute once the broker is back. CRUD, chat, and analysis remain functional (Redis is used as broker/cache, not primary data store).
 
 ---
 
@@ -199,7 +200,7 @@ As an analyst, I want a modern, responsive web interface with sidebar navigation
 - **FR-406**: System MUST persist chat sessions and messages for later retrieval
 - **FR-407**: System MUST instruct the LLM to refuse speculation beyond the filing data
 - **FR-408**: System MUST return retrieved source chunks with metadata alongside the response
-- **FR-409**: System MUST support LLM-based query expansion (generate 2–3 alternative queries, union results with original, deduplicate by chunk_id, re-rank by max score) to improve retrieval recall, controllable via retrieval config toggle
+- **FR-409**: System MUST support LLM-based query expansion (generate 2–3 alternative queries, union results with original, deduplicate by chunk_id, re-rank by max score) to improve retrieval recall, controllable via retrieval config toggle. If query expansion fails (e.g., LLM timeout), the system MUST fall back to the original query only — query expansion failure MUST NOT block or delay the chat response.
 - **FR-413**: System MUST handle the case where no relevant chunks are found
 
 **Financial Analysis Engine**

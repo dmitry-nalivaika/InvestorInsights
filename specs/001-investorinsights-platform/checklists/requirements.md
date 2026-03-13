@@ -56,7 +56,7 @@
 - [ ] **FR-406** System MUST persist chat sessions and messages
 - [ ] **FR-407** System MUST refuse speculation beyond filing data
 - [ ] **FR-408** System MUST return source chunks with metadata
-- [ ] **FR-409** System MUST support LLM-based query expansion (2–3 alternative queries), controllable via config toggle
+- [ ] **FR-409** System MUST support LLM-based query expansion (2–3 alternative queries), controllable via config toggle; MUST fall back to original query if expansion fails
 - [ ] **FR-413** System MUST handle no-results case
 
 ### Financial Analysis Engine

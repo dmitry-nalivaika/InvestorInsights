@@ -36,6 +36,7 @@
 - [ ] T010 [P] Pydantic request/response schemas in `backend/app/schemas/`
 - [ ] T011 [P] Azure Blob Storage client integration in `backend/app/clients/storage_client.py`
 - [ ] T012 Authentication middleware (API key from Key Vault, `X-API-Key` header) in `backend/app/api/middleware/`
+- [ ] T012a [P] Authentication enforcement integration tests — verify all endpoints except `GET /api/v1/health` return 401 without API key, verify `/health` returns 200 without API key, verify valid API key grants access (NFR-300) in `backend/tests/integration/test_auth_enforcement.py`
 - [ ] T013 [P] Error handling middleware (global exception handler, error taxonomy) in `backend/app/api/middleware/`
 - [ ] T014 Health check endpoint (`GET /api/v1/health` — ping DB, Redis, Qdrant, Blob) in `backend/app/api/health.py`
 - [ ] T015 [P] Makefile with common commands (setup, up, down, test, lint, migrate, azure-*)
@@ -161,7 +162,7 @@
 - [ ] T408 [US3] Conversation history management (last N exchanges, configurable, token budget) in `backend/app/services/chat_service.py`
 - [ ] T409 [P] [US3] Session title auto-generation (from first user message) in `backend/app/services/chat_service.py`
 - [ ] T410 [US3] Retrieval config support (top_k, score_threshold, doc_type/year/section filters) in `backend/app/services/retrieval_service.py`
-- [ ] T415 [US3] LLM-based query expansion — generate 2–3 alternative queries, execute semantic search for each, union results with original query results, deduplicate by chunk_id, re-rank by max score across all queries; controllable via `query_expansion` boolean in retrieval config (default: true) in `backend/app/services/retrieval_service.py` (FR-409)
+- [ ] T415 [US3] LLM-based query expansion — generate 2–3 alternative queries, execute semantic search for each, union results with original query results, deduplicate by chunk_id, re-rank by max score across all queries; controllable via `query_expansion` boolean in retrieval config (default: true); if query expansion LLM call fails (timeout, error, circuit breaker open), fall back to original query only — do not block or delay the chat response in `backend/app/services/retrieval_service.py` (FR-409)
 - [ ] T411 [US3] No-results handling — inform user, suggest rephrasing in `backend/app/services/chat_agent.py`
 - [ ] T412 [US3] Out-of-scope refusal (predictions, buy/sell, unrelated topics) in `backend/app/services/chat_agent.py`
 
