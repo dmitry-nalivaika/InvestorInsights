@@ -19,25 +19,25 @@ from app.models.section import DocumentSection
 from app.models.session import ChatSession
 
 __all__ = [
+    "AnalysisCriterion",
+    "AnalysisProfile",
+    "AnalysisResult",
     # Base & mixins
     "Base",
-    "UUIDMixin",
-    "TimestampMixin",
-    "CreatedAtMixin",
-    # Enums
-    "DocType",
-    "DocStatus",
-    "CriteriaCategory",
-    "ComparisonOp",
+    "ChatMessage",
+    "ChatSession",
     # Models
     "Company",
+    "ComparisonOp",
+    "CreatedAtMixin",
+    "CriteriaCategory",
+    "DocStatus",
+    # Enums
+    "DocType",
     "Document",
-    "DocumentSection",
     "DocumentChunk",
+    "DocumentSection",
     "FinancialStatement",
-    "AnalysisProfile",
-    "AnalysisCriterion",
-    "AnalysisResult",
-    "ChatSession",
-    "ChatMessage",
+    "TimestampMixin",
+    "UUIDMixin",
 ]

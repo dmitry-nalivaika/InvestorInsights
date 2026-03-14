@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy import DateTime, MetaData, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -32,7 +32,7 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=convention)
 
     # Allow JSONB columns to use plain dict type hints
-    type_annotation_map: dict[type, Any] = {}
+    type_annotation_map: ClassVar[dict[type, Any]] = {}
 
 
 class UUIDMixin:

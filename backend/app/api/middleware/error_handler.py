@@ -26,7 +26,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -35,6 +35,9 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.observability.logging import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 logger = get_logger(__name__)
 
@@ -57,10 +60,10 @@ class AppError(Exception):
 
     def __init__(
         self,
-        message: Optional[str] = None,
+        message: str | None = None,
         *,
-        details: Optional[List[Dict[str, Any]]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        details: list[dict[str, Any]] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         self.message = message or self.__class__.message
         self.details = details
@@ -78,7 +81,7 @@ class NotFoundError(AppError):
     def __init__(
         self,
         entity: str = "Resource",
-        entity_id: Optional[Union[str, Any]] = None,
+        entity_id: str | Any | None = None,
         **kwargs: Any,
     ) -> None:
         msg = f"{entity} not found"
@@ -119,7 +122,7 @@ class ExternalServiceError(AppError):
     def __init__(
         self,
         service: str = "external service",
-        message: Optional[str] = None,
+        message: str | None = None,
         **kwargs: Any,
     ) -> None:
         msg = message or f"Failed to reach {service}"
@@ -136,7 +139,7 @@ class RateLimitError(AppError):
 
     def __init__(
         self,
-        retry_after: Optional[int] = None,
+        retry_after: int | None = None,
         **kwargs: Any,
     ) -> None:
         headers = kwargs.pop("headers", None) or {}
@@ -155,11 +158,11 @@ def _build_error_response(
     status_code: int,
     error: str,
     message: str,
-    details: Optional[Sequence[Any]] = None,
-    headers: Optional[Dict[str, str]] = None,
+    details: Sequence[Any] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     """Build a consistent JSON error response."""
-    body: Dict[str, Any] = {
+    body: dict[str, Any] = {
         "status": status_code,
         "error": error,
         "message": message,
@@ -228,7 +231,7 @@ async def _handle_http_exception(
     )
 
 
-_STATUS_SLUG_MAP: Dict[int, str] = {
+_STATUS_SLUG_MAP: dict[int, str] = {
     400: "bad_request",
     401: "unauthorized",
     403: "forbidden",

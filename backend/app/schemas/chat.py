@@ -3,14 +3,15 @@
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
 from app.schemas.common import AppBaseModel, PaginatedResponse
 
+if TYPE_CHECKING:
+    import uuid
+    from datetime import datetime
 
 # ── Request schemas ──────────────────────────────────────────────
 
@@ -21,18 +22,18 @@ class RetrievalConfig(AppBaseModel):
     top_k: int = Field(15, ge=1, le=50)
     score_threshold: float = Field(0.65, ge=0.0, le=1.0)
     query_expansion: bool = True
-    filter_doc_types: Optional[List[str]] = None
-    filter_year_min: Optional[int] = None
-    filter_year_max: Optional[int] = None
-    filter_sections: Optional[List[str]] = None
+    filter_doc_types: list[str] | None = None
+    filter_year_min: int | None = None
+    filter_year_max: int | None = None
+    filter_sections: list[str] | None = None
 
 
 class ChatRequest(AppBaseModel):
     """POST /api/v1/companies/{company_id}/chat."""
 
     message: str = Field(..., min_length=1, max_length=10000)
-    session_id: Optional[uuid.UUID] = None
-    retrieval_config: Optional[RetrievalConfig] = None
+    session_id: uuid.UUID | None = None
+    retrieval_config: RetrievalConfig | None = None
 
 
 # ── Response schemas (non-SSE) ───────────────────────────────────
@@ -44,9 +45,9 @@ class ChatMessageRead(AppBaseModel):
     id: uuid.UUID
     role: str
     content: str
-    sources: Optional[Dict[str, Any]] = None
-    token_count: Optional[int] = None
-    model_used: Optional[str] = None
+    sources: dict[str, Any] | None = None
+    token_count: int | None = None
+    model_used: str | None = None
     created_at: datetime
 
 
@@ -55,7 +56,7 @@ class ChatSessionRead(AppBaseModel):
 
     id: uuid.UUID
     company_id: uuid.UUID
-    title: Optional[str] = None
+    title: str | None = None
     message_count: int = 0
     created_at: datetime
     updated_at: datetime
@@ -64,7 +65,7 @@ class ChatSessionRead(AppBaseModel):
 class ChatSessionDetail(ChatSessionRead):
     """GET /api/v1/companies/{company_id}/chat/sessions/{session_id}."""
 
-    messages: List[ChatMessageRead] = Field(default_factory=list)
+    messages: list[ChatMessageRead] = Field(default_factory=list)
 
 
 class ChatSessionList(PaginatedResponse[ChatSessionRead]):
@@ -80,13 +81,13 @@ class SSESessionEvent(AppBaseModel):
     """SSE 'session' event — sent at start of a new chat turn."""
 
     session_id: uuid.UUID
-    title: Optional[str] = None
+    title: str | None = None
 
 
 class SSESourcesEvent(AppBaseModel):
     """SSE 'sources' event — retrieved context chunks."""
 
-    sources: List[Dict[str, Any]]
+    sources: list[dict[str, Any]]
 
 
 class SSETokenEvent(AppBaseModel):

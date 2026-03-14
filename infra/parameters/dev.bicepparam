@@ -10,14 +10,14 @@ param projectName = 'investorinsights'
 
 // ── Database (Burstable B1ms — ~$13/month) ──────────────────────
 param dbAdminLogin = readEnvironmentVariable('DB_ADMIN_LOGIN', 'analyst')
-param dbAdminPassword = readEnvironmentVariable('DB_ADMIN_PASSWORD')
+param dbAdminPassword = readEnvironmentVariable('DB_ADMIN_PASSWORD', 'DEPLOY_TIME_SECRET')
 param dbSkuName = 'Standard_B1ms'
 param dbSkuTier = 'Burstable'
 param dbStorageSizeGB = 32
 param dbBackupRetentionDays = 7
 
 // ── Auth ────────────────────────────────────────────────────────
-param apiAuthKey = readEnvironmentVariable('API_AUTH_KEY')
+param apiAuthKey = readEnvironmentVariable('API_AUTH_KEY', 'DEPLOY_TIME_SECRET')
 
 // ── SEC EDGAR ───────────────────────────────────────────────────
 param secEdgarUserAgent = 'InvestorInsights/1.0 (admin@investorinsights.dev)'

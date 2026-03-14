@@ -25,7 +25,7 @@ Usage::
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import redis.asyncio as aioredis
 
@@ -43,12 +43,12 @@ SHORT_CACHE_TTL: int = 60  # 1 minute
 class RedisClient:
     """Async Redis client with caching and rate-limiting helpers."""
 
-    def __init__(self, settings: Optional[Settings] = None) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         if settings is None:
             settings = get_settings()
         self._settings = settings
-        self._pool: Optional[aioredis.ConnectionPool] = None
-        self._client: Optional[aioredis.Redis] = None
+        self._pool: aioredis.ConnectionPool | None = None
+        self._client: aioredis.Redis | None = None
 
     # ── Lifecycle ────────────────────────────────────────────────
 
@@ -113,7 +113,7 @@ class RedisClient:
         key: str,
         *,
         namespace: str = "cache",
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Retrieve a cached value. Returns None on miss or error."""
         full_key = f"{namespace}:{key}"
         try:
@@ -167,7 +167,7 @@ class RedisClient:
     async def hset_cached(
         self,
         key: str,
-        mapping: Dict[str, Any],
+        mapping: dict[str, Any],
         *,
         ttl: int = DEFAULT_CACHE_TTL,
         namespace: str = "cache",
@@ -189,7 +189,7 @@ class RedisClient:
         field: str,
         *,
         namespace: str = "cache",
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Get a single field from a Redis hash."""
         full_key = f"{namespace}:{key}"
         try:
@@ -206,7 +206,7 @@ class RedisClient:
         key: str,
         *,
         namespace: str = "cache",
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get all fields from a Redis hash."""
         full_key = f"{namespace}:{key}"
         try:
@@ -252,7 +252,7 @@ class RedisClient:
 
     # ── Pub/Sub helpers (for future SSE fan-out) ─────────────────
 
-    async def publish(self, channel: str, message: Union[str, dict]) -> int:
+    async def publish(self, channel: str, message: str | dict) -> int:
         """Publish a message to a Redis channel."""
         try:
             payload = json.dumps(message, default=str) if isinstance(message, dict) else message
@@ -294,12 +294,12 @@ class RedisClient:
 # Module-level singleton
 # =====================================================================
 
-_redis_client: Optional[RedisClient] = None
+_redis_client: RedisClient | None = None
 
 
-async def init_redis_client(settings: Optional[Settings] = None) -> RedisClient:
+async def init_redis_client(settings: Settings | None = None) -> RedisClient:
     """Initialise and connect the module-level Redis client singleton."""
-    global _redis_client  # noqa: PLW0603
+    global _redis_client
     _redis_client = RedisClient(settings)
     await _redis_client.connect()
     return _redis_client
@@ -307,7 +307,7 @@ async def init_redis_client(settings: Optional[Settings] = None) -> RedisClient:
 
 async def close_redis_client() -> None:
     """Close the module-level Redis client."""
-    global _redis_client  # noqa: PLW0603
+    global _redis_client
     if _redis_client is not None:
         await _redis_client.close()
         _redis_client = None

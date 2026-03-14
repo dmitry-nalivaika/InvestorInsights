@@ -3,10 +3,7 @@
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
-from decimal import Decimal
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -15,6 +12,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, CreatedAtMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    import uuid
+    from datetime import datetime
+    from decimal import Decimal
+
     from app.models.company import Company
     from app.models.profile import AnalysisProfile
 
@@ -61,7 +62,7 @@ class AnalysisResult(UUIDMixin, CreatedAtMixin, Base):
     result_details: Mapped[list] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb"),
     )
-    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # ── Relationships ────────────────────────────────────────────
     company: Mapped[Company] = relationship(

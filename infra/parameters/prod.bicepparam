@@ -10,14 +10,14 @@ param projectName = 'investorinsights'
 
 // ── Database (General Purpose D2ds_v5 — 2 vCore, 8 GB) ─────────
 param dbAdminLogin = readEnvironmentVariable('DB_ADMIN_LOGIN', 'analyst')
-param dbAdminPassword = readEnvironmentVariable('DB_ADMIN_PASSWORD')
+param dbAdminPassword = readEnvironmentVariable('DB_ADMIN_PASSWORD', 'DEPLOY_TIME_SECRET')
 param dbSkuName = 'Standard_D2ds_v5'
 param dbSkuTier = 'GeneralPurpose'
 param dbStorageSizeGB = 128
 param dbBackupRetentionDays = 35
 
 // ── Auth ────────────────────────────────────────────────────────
-param apiAuthKey = readEnvironmentVariable('API_AUTH_KEY')
+param apiAuthKey = readEnvironmentVariable('API_AUTH_KEY', 'DEPLOY_TIME_SECRET')
 
 // ── SEC EDGAR ───────────────────────────────────────────────────
 param secEdgarUserAgent = readEnvironmentVariable('SEC_EDGAR_USER_AGENT', 'InvestorInsights/1.0 (admin@investorinsights.dev)')

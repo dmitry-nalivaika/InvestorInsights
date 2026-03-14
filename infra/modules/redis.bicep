@@ -24,6 +24,8 @@ resource redis 'Microsoft.Cache/redis@2024-03-01' = {
   }
 }
 
+// Key Vault stores the secret; this output is only consumed by the keyVault module in the same deployment
+#disable-next-line outputs-should-not-contain-secrets
 output connectionString string = '${redisName}.redis.cache.windows.net:6380,password=${redis.listKeys().primaryKey},ssl=True,abortConnect=False'
 output hostName string = redis.properties.hostName
 output name string = redis.name

@@ -4,10 +4,8 @@
 from __future__ import annotations
 
 import os
-from typing import Generator
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # Set required env vars BEFORE any app imports so Settings() doesn't fail.
@@ -17,10 +15,16 @@ os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://fake.openai.azure.com")
 os.environ.setdefault("AZURE_STORAGE_CONNECTION_STRING", "")
 os.environ.setdefault("AZURE_STORAGE_ACCOUNT_NAME", "devstoreaccount1")
 
-from app.api.router import api_router  # noqa: E402
-from app.config import get_settings  # noqa: E402
-from app.main import create_app  # noqa: E402
+from typing import TYPE_CHECKING
 
+from app.api.router import api_router
+from app.config import get_settings
+from app.main import create_app
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from fastapi import FastAPI
 
 # ── Test-only stubs ──────────────────────────────────────────────
 # These lightweight routes exist so integration tests can exercise
@@ -36,7 +40,7 @@ _protected_stub_registered = False
 
 def _register_protected_stub() -> None:
     """Add /test-protected to the auth-guarded api_router."""
-    global _protected_stub_registered  # noqa: PLW0603
+    global _protected_stub_registered
     if _protected_stub_registered:
         return
     _has_it = any(

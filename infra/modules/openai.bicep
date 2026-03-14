@@ -64,5 +64,7 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
 }
 
 output endpoint string = openai.properties.endpoint
+// Key Vault stores the secret; this output is only consumed by the keyVault module in the same deployment
+#disable-next-line outputs-should-not-contain-secrets
 output apiKey string = openai.listKeys().key1
 output name string = openai.name

@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,6 +12,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.models.company import Company
     from app.models.message import ChatMessage
 
@@ -29,7 +29,7 @@ class ChatSession(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
-    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     message_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0"),
     )
@@ -38,7 +38,7 @@ class ChatSession(UUIDMixin, TimestampMixin, Base):
     company: Mapped[Company] = relationship(
         "Company", back_populates="chat_sessions",
     )
-    messages: Mapped[List[ChatMessage]] = relationship(
+    messages: Mapped[list[ChatMessage]] = relationship(
         "ChatMessage", back_populates="session", cascade="all, delete-orphan",
         passive_deletes=True, order_by="ChatMessage.created_at",
     )

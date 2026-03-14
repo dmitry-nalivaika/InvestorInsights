@@ -9,9 +9,8 @@ and shared across requests via FastAPI dependency injection.
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from azure.storage.blob import (
     BlobSasPermissions,
@@ -20,7 +19,10 @@ from azure.storage.blob import (
 )
 from azure.storage.blob.aio import BlobServiceClient, ContainerClient
 
-from app.config import Settings
+if TYPE_CHECKING:
+    import uuid
+
+    from app.config import Settings
 
 # Content-type mapping for uploaded filings
 _CONTENT_TYPES = {
@@ -48,7 +50,7 @@ class StorageClient:
         self._account_name = settings.azure_storage_account_name
         self._container_filings = settings.azure_storage_container_filings
         self._container_exports = settings.azure_storage_container_exports
-        self._service_client: Optional[BlobServiceClient] = None
+        self._service_client: BlobServiceClient | None = None
 
     # ── Lifecycle ────────────────────────────────────────────────
 
@@ -91,7 +93,7 @@ class StorageClient:
 
     # ── Container helpers ────────────────────────────────────────
 
-    def _get_container(self, container: Optional[str] = None) -> ContainerClient:
+    def _get_container(self, container: str | None = None) -> ContainerClient:
         """Get a container client. Defaults to the filings container."""
         name = container or self._container_filings
         return self.client.get_container_client(name)
@@ -103,7 +105,7 @@ class StorageClient:
         company_id: uuid.UUID,
         doc_type: str,
         fiscal_year: int,
-        fiscal_quarter: Optional[int],
+        fiscal_quarter: int | None,
         filename: str,
     ) -> str:
         """
@@ -124,9 +126,9 @@ class StorageClient:
         self,
         key: str,
         data: bytes,
-        content_type: Optional[str] = None,
-        container: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        content_type: str | None = None,
+        container: str | None = None,
+        metadata: dict | None = None,
         overwrite: bool = False,
     ) -> str:
         """
@@ -161,8 +163,8 @@ class StorageClient:
         self,
         key: str,
         file_path: str,
-        content_type: Optional[str] = None,
-        container: Optional[str] = None,
+        content_type: str | None = None,
+        container: str | None = None,
         overwrite: bool = False,
     ) -> str:
         """Upload a local file to a blob."""
@@ -178,7 +180,7 @@ class StorageClient:
     async def download_blob(
         self,
         key: str,
-        container: Optional[str] = None,
+        container: str | None = None,
     ) -> bytes:
         """Download a blob's contents as bytes."""
         container_client = self._get_container(container)
@@ -191,7 +193,7 @@ class StorageClient:
     async def delete_blob(
         self,
         key: str,
-        container: Optional[str] = None,
+        container: str | None = None,
     ) -> None:
         """Delete a blob. No error if it doesn't exist."""
         container_client = self._get_container(container)
@@ -201,7 +203,7 @@ class StorageClient:
     async def delete_prefix(
         self,
         prefix: str,
-        container: Optional[str] = None,
+        container: str | None = None,
     ) -> int:
         """
         Delete all blobs under a prefix (e.g. company cleanup).
@@ -219,9 +221,9 @@ class StorageClient:
 
     async def list_blobs(
         self,
-        prefix: Optional[str] = None,
-        container: Optional[str] = None,
-        max_results: Optional[int] = None,
+        prefix: str | None = None,
+        container: str | None = None,
+        max_results: int | None = None,
     ) -> list[dict]:
         """
         List blobs under an optional prefix.
@@ -246,7 +248,7 @@ class StorageClient:
     async def blob_exists(
         self,
         key: str,
-        container: Optional[str] = None,
+        container: str | None = None,
     ) -> bool:
         """Check whether a blob exists."""
         container_client = self._get_container(container)
@@ -258,7 +260,7 @@ class StorageClient:
     def generate_sas_url(
         self,
         key: str,
-        container: Optional[str] = None,
+        container: str | None = None,
         expiry_minutes: int = 60,
         permissions: str = "r",
     ) -> str:
@@ -271,7 +273,7 @@ class StorageClient:
         container_name = container or self._container_filings
 
         # Extract account key from connection string for SAS generation
-        account_key: Optional[str] = None
+        account_key: str | None = None
         if self._connection_string:
             for part in self._connection_string.split(";"):
                 if part.startswith("AccountKey="):
@@ -290,7 +292,7 @@ class StorageClient:
             blob_name=key,
             account_key=account_key,
             permission=BlobSasPermissions(read="r" in permissions),
-            expiry=datetime.now(timezone.utc) + timedelta(minutes=expiry_minutes),
+            expiry=datetime.now(UTC) + timedelta(minutes=expiry_minutes),
         )
 
         # Build the full URL — handle Azurite vs real Azure
@@ -317,7 +319,7 @@ class StorageClient:
 
 # ── Module-level singleton ───────────────────────────────────────
 
-_storage_client: Optional[StorageClient] = None
+_storage_client: StorageClient | None = None
 
 
 def get_storage_client() -> StorageClient:
@@ -331,7 +333,7 @@ def get_storage_client() -> StorageClient:
 
 async def init_storage_client(settings: Settings) -> StorageClient:
     """Create and initialise the global StorageClient."""
-    global _storage_client  # noqa: PLW0603
+    global _storage_client
     client = StorageClient(settings)
     await client.init()
     _storage_client = client
@@ -340,7 +342,7 @@ async def init_storage_client(settings: Settings) -> StorageClient:
 
 async def close_storage_client() -> None:
     """Shut down the global StorageClient."""
-    global _storage_client  # noqa: PLW0603
+    global _storage_client
     if _storage_client is not None:
         await _storage_client.close()
         _storage_client = None

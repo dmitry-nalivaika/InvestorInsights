@@ -11,10 +11,9 @@ Validates:
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter
-from fastapi.testclient import TestClient
 from pydantic import BaseModel, Field
 
 from app.api.middleware.error_handler import (
@@ -25,15 +24,17 @@ from app.api.middleware.error_handler import (
     ValidationError,
 )
 
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
 
 # ── Test-only routes that deliberately raise each exception ──────
 
-_error_test_router: Optional[APIRouter] = None
+_error_test_router: APIRouter | None = None
 
 
 def _get_error_test_router() -> APIRouter:
     """Lazily create a router with error-triggering routes."""
-    global _error_test_router  # noqa: PLW0603
+    global _error_test_router
     if _error_test_router is not None:
         return _error_test_router
 

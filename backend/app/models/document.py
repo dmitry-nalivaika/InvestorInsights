@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import enum
-import uuid
-from datetime import date, datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
@@ -19,7 +17,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,6 +24,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    import uuid
+    from datetime import date, datetime
+
     from app.models.chunk import DocumentChunk
     from app.models.company import Company
     from app.models.financial import FinancialStatement
@@ -85,41 +85,41 @@ class Document(UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
     fiscal_year: Mapped[int] = mapped_column(Integer, nullable=False)
-    fiscal_quarter: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    fiscal_quarter: Mapped[int | None] = mapped_column(Integer, nullable=True)
     filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     period_end_date: Mapped[date] = mapped_column(Date, nullable=False)
-    sec_accession: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    source_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    sec_accession: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     storage_bucket: Mapped[str] = mapped_column(
         String(100), nullable=False, server_default="filings",
     )
     storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
-    file_size_bytes: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    page_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[DocStatus] = mapped_column(
         Enum(DocStatus, name="doc_status_enum", create_constraint=False, native_enum=True),
         nullable=False,
         server_default="uploaded",
     )
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    processing_started_at: Mapped[Optional[datetime]] = mapped_column(
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    processing_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True,
     )
-    processing_completed_at: Mapped[Optional[datetime]] = mapped_column(
+    processing_completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True,
     )
 
     # ── Relationships ────────────────────────────────────────────
     company: Mapped[Company] = relationship("Company", back_populates="documents")
-    sections: Mapped[List[DocumentSection]] = relationship(
+    sections: Mapped[list[DocumentSection]] = relationship(
         "DocumentSection", back_populates="document", cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    chunks: Mapped[List[DocumentChunk]] = relationship(
+    chunks: Mapped[list[DocumentChunk]] = relationship(
         "DocumentChunk", back_populates="document", cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    financial_statements: Mapped[List[FinancialStatement]] = relationship(
+    financial_statements: Mapped[list[FinancialStatement]] = relationship(
         "FinancialStatement", back_populates="document",
     )
 

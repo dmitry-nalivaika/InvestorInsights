@@ -3,15 +3,17 @@
 
 from __future__ import annotations
 
-import uuid
-from datetime import date, datetime
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
-from app.models.document import DocStatus, DocType
 from app.schemas.common import AppBaseModel, PaginatedResponse
 
+if TYPE_CHECKING:
+    import uuid
+    from datetime import date, datetime
+
+    from app.models.document import DocStatus, DocType
 
 # ── Request schemas ──────────────────────────────────────────────
 
@@ -21,15 +23,15 @@ class DocumentUpload(AppBaseModel):
 
     doc_type: DocType
     fiscal_year: int = Field(..., ge=1990, le=2100)
-    fiscal_quarter: Optional[int] = Field(None, ge=1, le=4)
+    fiscal_quarter: int | None = Field(None, ge=1, le=4)
     filing_date: date
     period_end_date: date
-    sec_accession: Optional[str] = Field(None, max_length=30)
-    source_url: Optional[str] = Field(None, max_length=500)
+    sec_accession: str | None = Field(None, max_length=30)
+    source_url: str | None = Field(None, max_length=500)
 
     @field_validator("fiscal_quarter")
     @classmethod
-    def quarter_required_for_10q(cls, v: Optional[int], info: Any) -> Optional[int]:
+    def quarter_required_for_10q(cls, v: int | None, info: Any) -> int | None:
         """10-Q filings must specify a quarter."""
         # info.data may not have doc_type yet if validation order differs;
         # the service layer enforces this as a business rule too.
@@ -39,7 +41,7 @@ class DocumentUpload(AppBaseModel):
 class FetchSECRequest(AppBaseModel):
     """POST /api/v1/companies/{company_id}/documents/fetch-sec."""
 
-    filing_types: List[str] = Field(
+    filing_types: list[str] = Field(
         default=["10-K", "10-Q"],
         description="Filing types to fetch",
     )
@@ -56,18 +58,18 @@ class DocumentRead(AppBaseModel):
     company_id: uuid.UUID
     doc_type: DocType
     fiscal_year: int
-    fiscal_quarter: Optional[int] = None
+    fiscal_quarter: int | None = None
     filing_date: date
     period_end_date: date
-    sec_accession: Optional[str] = None
-    source_url: Optional[str] = None
+    sec_accession: str | None = None
+    source_url: str | None = None
     storage_key: str
-    file_size_bytes: Optional[int] = None
-    page_count: Optional[int] = None
+    file_size_bytes: int | None = None
+    page_count: int | None = None
     status: DocStatus
-    error_message: Optional[str] = None
-    processing_started_at: Optional[datetime] = None
-    processing_completed_at: Optional[datetime] = None
+    error_message: str | None = None
+    processing_started_at: datetime | None = None
+    processing_completed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -77,15 +79,15 @@ class SectionSummary(AppBaseModel):
 
     id: uuid.UUID
     section_key: str
-    section_title: Optional[str] = None
+    section_title: str | None = None
     char_count: int = 0
-    token_count: Optional[int] = None
+    token_count: int | None = None
 
 
 class DocumentDetail(DocumentRead):
     """GET /api/v1/companies/{company_id}/documents/{document_id}."""
 
-    sections: List[SectionSummary] = Field(default_factory=list)
+    sections: list[SectionSummary] = Field(default_factory=list)
     chunk_count: int = 0
     financial_data_extracted: bool = False
 

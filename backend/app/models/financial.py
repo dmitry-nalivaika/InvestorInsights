@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import uuid
-from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     CheckConstraint,
@@ -14,7 +12,6 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
-    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -22,6 +19,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    import uuid
+    from datetime import date
+
     from app.models.company import Company
     from app.models.document import Document
 
@@ -47,13 +47,13 @@ class FinancialStatement(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
-    document_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    document_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
         nullable=True,
     )
     fiscal_year: Mapped[int] = mapped_column(Integer, nullable=False)
-    fiscal_quarter: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    fiscal_quarter: Mapped[int | None] = mapped_column(Integer, nullable=True)
     period_end_date: Mapped[date] = mapped_column(Date, nullable=False)
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, server_default="USD",
@@ -62,13 +62,13 @@ class FinancialStatement(UUIDMixin, TimestampMixin, Base):
     source: Mapped[str] = mapped_column(
         String(50), nullable=False, server_default="xbrl_api",
     )
-    raw_xbrl_data: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    raw_xbrl_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # ── Relationships ────────────────────────────────────────────
     company: Mapped[Company] = relationship(
         "Company", back_populates="financial_statements",
     )
-    document: Mapped[Optional[Document]] = relationship(
+    document: Mapped[Document | None] = relationship(
         "Document", back_populates="financial_statements",
     )
 

@@ -18,7 +18,6 @@ Usage:
 from __future__ import annotations
 
 import hmac
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader
@@ -43,7 +42,7 @@ def _get_settings_for_auth() -> Settings:
 
 
 async def require_api_key(
-    api_key: Optional[str] = Security(_api_key_header),
+    api_key: str | None = Security(_api_key_header),
     settings: Settings = Depends(_get_settings_for_auth),
 ) -> str:
     """

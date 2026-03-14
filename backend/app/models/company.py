@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -26,32 +26,32 @@ class Company(UUIDMixin, TimestampMixin, Base):
 
     ticker: Mapped[str] = mapped_column(String(10), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    cik: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
-    sector: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    industry: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    metadata_: Mapped[Optional[dict]] = mapped_column(
+    cik: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    sector: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_: Mapped[dict | None] = mapped_column(
         "metadata", JSONB, server_default=text("'{}'::jsonb"),
     )
 
     # ── Relationships ────────────────────────────────────────────
-    documents: Mapped[List[Document]] = relationship(
+    documents: Mapped[list[Document]] = relationship(
         "Document", back_populates="company", cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    financial_statements: Mapped[List[FinancialStatement]] = relationship(
+    financial_statements: Mapped[list[FinancialStatement]] = relationship(
         "FinancialStatement", back_populates="company", cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    chat_sessions: Mapped[List[ChatSession]] = relationship(
+    chat_sessions: Mapped[list[ChatSession]] = relationship(
         "ChatSession", back_populates="company", cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    analysis_results: Mapped[List[AnalysisResult]] = relationship(
+    analysis_results: Mapped[list[AnalysisResult]] = relationship(
         "AnalysisResult", back_populates="company", cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    document_chunks: Mapped[List[DocumentChunk]] = relationship(
+    document_chunks: Mapped[list[DocumentChunk]] = relationship(
         "DocumentChunk", back_populates="company", cascade="all, delete-orphan",
         passive_deletes=True,
     )

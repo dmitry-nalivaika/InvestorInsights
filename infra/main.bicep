@@ -132,7 +132,6 @@ module appInsights 'modules/app-insights.bicep' = {
     tags: tags
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
   }
-  dependsOn: [logAnalytics]
 }
 
 // ── Networking (prod only) ──────────────────────────────────────
@@ -164,7 +163,7 @@ module postgresql 'modules/postgresql.bicep' = {
     storageSizeGB: dbStorageSizeGB
     backupRetentionDays: dbBackupRetentionDays
     enableVnet: enableVnet
-    subnetId: enableVnet ? networking.outputs.postgresSubnetId : ''
+    subnetId: enableVnet && networking != null ? networking!.outputs.postgresSubnetId : ''
   }
   dependsOn: [resourceGroup]
 }
@@ -226,9 +225,8 @@ module keyVault 'modules/key-vault.bicep' = {
     openaiEndpoint: openai.outputs.endpoint
     apiAuthKey: apiAuthKey
     secEdgarUserAgent: secEdgarUserAgent
-    redisConnectionString: enableManagedRedis ? redis.outputs.connectionString : ''
+    redisConnectionString: enableManagedRedis && redis != null ? redis!.outputs.connectionString : ''
   }
-  dependsOn: [postgresql, storage, openai]
 }
 
 // ── Container Registry ──────────────────────────────────────────
@@ -268,7 +266,6 @@ module containerApps 'modules/container-apps.bicep' = {
     qdrantMinReplicas: qdrantMinReplicas
     qdrantMaxReplicas: qdrantMaxReplicas
   }
-  dependsOn: [keyVault, containerRegistry, logAnalytics, appInsights]
 }
 
 // ── Outputs ─────────────────────────────────────────────────────

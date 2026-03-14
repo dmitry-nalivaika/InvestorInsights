@@ -7,8 +7,7 @@ and background workers.
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -18,8 +17,11 @@ from sqlalchemy.ext.asyncio import (
 
 from app.config import Settings, get_settings
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
-def build_async_engine(settings: Optional[Settings] = None):
+
+def build_async_engine(settings: Settings | None = None):
     """Create an async SQLAlchemy engine from application settings."""
     if settings is None:
         settings = get_settings()
@@ -35,7 +37,7 @@ def build_async_engine(settings: Optional[Settings] = None):
 
 
 def build_async_session_factory(
-    settings: Optional[Settings] = None,
+    settings: Settings | None = None,
 ) -> async_sessionmaker[AsyncSession]:
     """Create an async session factory bound to the engine."""
     engine = build_async_engine(settings)
@@ -48,12 +50,12 @@ def build_async_session_factory(
 
 # Module-level defaults — lazily initialised via create_app() lifespan
 _engine = None
-_async_session_factory: Optional[async_sessionmaker[AsyncSession]] = None
+_async_session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def init_engine(settings: Settings) -> None:
     """Initialise the module-level engine and session factory (called at startup)."""
-    global _engine, _async_session_factory  # noqa: PLW0603
+    global _engine, _async_session_factory
     _engine = build_async_engine(settings)
     _async_session_factory = async_sessionmaker(
         bind=_engine,
@@ -64,7 +66,7 @@ def init_engine(settings: Settings) -> None:
 
 async def dispose_engine() -> None:
     """Dispose the module-level engine (called at shutdown)."""
-    global _engine, _async_session_factory  # noqa: PLW0603
+    global _engine, _async_session_factory
     if _engine is not None:
         await _engine.dispose()
         _engine = None

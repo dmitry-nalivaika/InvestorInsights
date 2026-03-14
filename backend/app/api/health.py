@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import httpx
 from fastapi import APIRouter
@@ -47,7 +47,7 @@ router = APIRouter(tags=["system"])
 # =====================================================================
 
 
-async def _probe_database(settings: Settings) -> Tuple[str, float, Optional[str]]:
+async def _probe_database(settings: Settings) -> tuple[str, float, str | None]:
     """Probe PostgreSQL with ``SELECT 1``."""
     start = time.monotonic()
     try:
@@ -65,7 +65,7 @@ async def _probe_database(settings: Settings) -> Tuple[str, float, Optional[str]
         return ("unhealthy", latency, str(exc))
 
 
-async def _probe_vector_store(settings: Settings) -> Tuple[str, float, Optional[str]]:
+async def _probe_vector_store(settings: Settings) -> tuple[str, float, str | None]:
     """Probe Qdrant via its HTTP readiness endpoint."""
     start = time.monotonic()
     url = settings.qdrant_url or f"http://{settings.qdrant_host}:{settings.qdrant_http_port}"
@@ -81,7 +81,7 @@ async def _probe_vector_store(settings: Settings) -> Tuple[str, float, Optional[
         return ("unhealthy", latency, str(exc))
 
 
-async def _probe_object_storage(settings: Settings) -> Tuple[str, float, Optional[str]]:
+async def _probe_object_storage(settings: Settings) -> tuple[str, float, str | None]:
     """Probe Azure Blob Storage by listing containers."""
     start = time.monotonic()
     try:
@@ -102,7 +102,7 @@ async def _probe_object_storage(settings: Settings) -> Tuple[str, float, Optiona
         return ("unhealthy", latency, str(exc))
 
 
-async def _probe_redis(settings: Settings) -> Tuple[str, float, Optional[str]]:
+async def _probe_redis(settings: Settings) -> tuple[str, float, str | None]:
     """Probe Redis with PING."""
     start = time.monotonic()
     try:
@@ -126,7 +126,7 @@ async def _probe_redis(settings: Settings) -> Tuple[str, float, Optional[str]]:
         return ("unhealthy", latency, str(exc))
 
 
-async def _probe_llm_api(settings: Settings) -> Tuple[str, float, Optional[str]]:
+async def _probe_llm_api(settings: Settings) -> tuple[str, float, str | None]:
     """Probe the LLM API endpoint (Azure OpenAI).
 
     In development, if the key looks fake we mark as ``healthy``
@@ -181,7 +181,7 @@ async def health_check() -> HealthResponse:
 
     settings = get_settings()
 
-    probes: Dict[str, Any] = {
+    probes: dict[str, Any] = {
         "database": _probe_database,
         "vector_store": _probe_vector_store,
         "object_storage": _probe_object_storage,
@@ -195,17 +195,17 @@ async def health_check() -> HealthResponse:
         for name, fn in probes.items()
     }
 
-    results: Dict[str, Tuple[str, float, Optional[str]]] = {}
+    results: dict[str, tuple[str, float, str | None]] = {}
     for name, task in tasks.items():
         try:
             results[name] = await asyncio.wait_for(task, timeout=_PROBE_TIMEOUT + 1)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             results[name] = ("unhealthy", (_PROBE_TIMEOUT + 1) * 1000, "Probe timed out")
         except Exception as exc:
             results[name] = ("unhealthy", 0.0, str(exc))
 
     # Build component map
-    components: Dict[str, HealthComponent] = {}
+    components: dict[str, HealthComponent] = {}
     for name, (status_str, latency, error) in results.items():
         components[name] = HealthComponent(
             status=status_str,

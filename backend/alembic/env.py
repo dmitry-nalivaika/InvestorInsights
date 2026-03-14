@@ -18,13 +18,22 @@ from sqlalchemy import engine_from_config, pool
 # when running `alembic` from the backend/ directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import get_settings  # noqa: E402
-from app.models.base import Base  # noqa: E402
+from app.config import get_settings
 
 # Import all model modules so Base.metadata is fully populated.
-from app.models import company, document, section, chunk  # noqa: E402, F401
-from app.models import financial, profile, criterion, result  # noqa: E402, F401
-from app.models import session, message  # noqa: E402, F401
+from app.models import (  # noqa: F401  # noqa: E402, F401  # noqa: E402, F401
+    chunk,
+    company,
+    criterion,
+    document,
+    financial,
+    message,
+    profile,
+    result,
+    section,
+    session,
+)
+from app.models.base import Base
 
 # ── Alembic Config ───────────────────────────────────────────────
 

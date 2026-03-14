@@ -11,9 +11,8 @@ Creates and configures the FastAPI app with:
 from __future__ import annotations
 
 import time
-from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +24,9 @@ from app.api.router import api_router
 from app.config import AppEnvironment, Settings, get_settings
 from app.db.session import dispose_engine, init_engine
 from app.observability.logging import setup_logging
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 # ── Startup time tracking ────────────────────────────────────────
 _startup_time: float = 0.0
@@ -43,7 +45,7 @@ def get_uptime_seconds() -> int:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown lifecycle."""
-    global _startup_time  # noqa: PLW0603
+    global _startup_time
 
     settings: Settings = get_settings()
 
@@ -61,7 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # ── App Factory ──────────────────────────────────────────────────
 
 
-def create_app(settings: Optional[Settings] = None) -> FastAPI:
+def create_app(settings: Settings | None = None) -> FastAPI:
     """
     Create and configure the FastAPI application.
 

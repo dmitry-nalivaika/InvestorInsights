@@ -22,14 +22,18 @@ Usage::
 
 from __future__ import annotations
 
-import uuid
-from typing import Any, Dict, List, Optional, Sequence
+import contextlib
+from typing import TYPE_CHECKING, Any
 
 from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.http.exceptions import UnexpectedResponse
 
 from app.config import Settings, get_settings
 from app.observability.logging import get_logger
+
+if TYPE_CHECKING:
+    import uuid
+    from collections.abc import Sequence
 
 logger = get_logger(__name__)
 
@@ -64,7 +68,7 @@ class VectorStoreClient:
     schema, point upsert/delete, and filtered similarity search.
     """
 
-    def __init__(self, settings: Optional[Settings] = None) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         if settings is None:
             settings = get_settings()
         self._settings = settings
@@ -125,24 +129,20 @@ class VectorStoreClient:
         integer_fields = [PAYLOAD_FISCAL_YEAR]
 
         for field in keyword_fields:
-            try:
+            with contextlib.suppress(UnexpectedResponse):
                 await self._client.create_payload_index(
                     collection_name=collection_name,
                     field_name=field,
                     field_schema=models.PayloadSchemaType.KEYWORD,
                 )
-            except UnexpectedResponse:
-                pass  # Index may already exist
 
         for field in integer_fields:
-            try:
+            with contextlib.suppress(UnexpectedResponse):
                 await self._client.create_payload_index(
                     collection_name=collection_name,
                     field_name=field,
                     field_schema=models.PayloadSchemaType.INTEGER,
                 )
-            except UnexpectedResponse:
-                pass
 
     async def delete_collection(self, company_id: uuid.UUID | str) -> bool:
         """Delete the per-company collection. Returns True if deleted."""
@@ -166,7 +166,7 @@ class VectorStoreClient:
 
     async def collection_info(
         self, company_id: uuid.UUID | str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Return collection metadata (point count, status, etc.)."""
         name = self.collection_name(company_id)
         try:
@@ -248,14 +248,14 @@ class VectorStoreClient:
     async def search(
         self,
         company_id: uuid.UUID | str,
-        query_vector: List[float],
+        query_vector: list[float],
         *,
         top_k: int = 15,
-        score_threshold: Optional[float] = None,
-        doc_types: Optional[List[str]] = None,
-        fiscal_years: Optional[List[int]] = None,
-        section_keys: Optional[List[str]] = None,
-    ) -> List[models.ScoredPoint]:
+        score_threshold: float | None = None,
+        doc_types: list[str] | None = None,
+        fiscal_years: list[int] | None = None,
+        section_keys: list[str] | None = None,
+    ) -> list[models.ScoredPoint]:
         """Semantic similarity search with optional metadata filters.
 
         Args:
@@ -271,7 +271,7 @@ class VectorStoreClient:
             List of ScoredPoint with payload.
         """
         name = self.collection_name(company_id)
-        must_conditions: List[models.Condition] = []
+        must_conditions: list[models.Condition] = []
 
         if doc_types:
             must_conditions.append(
@@ -314,16 +314,16 @@ class VectorStoreClient:
         self,
         company_id: uuid.UUID | str,
         *,
-        document_id: Optional[str] = None,
+        document_id: str | None = None,
         limit: int = 100,
-        offset: Optional[str] = None,
-    ) -> tuple[List[models.Record], Optional[str]]:
+        offset: str | None = None,
+    ) -> tuple[list[models.Record], str | None]:
         """Scroll through points in a collection.
 
         Returns (records, next_offset). next_offset is None when done.
         """
         name = self.collection_name(company_id)
-        conditions: List[models.Condition] = []
+        conditions: list[models.Condition] = []
         if document_id:
             conditions.append(
                 models.FieldCondition(
@@ -365,12 +365,12 @@ class VectorStoreClient:
 # Module-level singleton
 # =====================================================================
 
-_qdrant_client: Optional[VectorStoreClient] = None
+_qdrant_client: VectorStoreClient | None = None
 
 
-def init_qdrant_client(settings: Optional[Settings] = None) -> VectorStoreClient:
+def init_qdrant_client(settings: Settings | None = None) -> VectorStoreClient:
     """Initialise the module-level Qdrant client singleton."""
-    global _qdrant_client  # noqa: PLW0603
+    global _qdrant_client
     _qdrant_client = VectorStoreClient(settings)
     logger.info("Qdrant client initialised")
     return _qdrant_client
@@ -378,7 +378,7 @@ def init_qdrant_client(settings: Optional[Settings] = None) -> VectorStoreClient
 
 async def close_qdrant_client() -> None:
     """Close the module-level Qdrant client."""
-    global _qdrant_client  # noqa: PLW0603
+    global _qdrant_client
     if _qdrant_client is not None:
         await _qdrant_client.close()
         _qdrant_client = None

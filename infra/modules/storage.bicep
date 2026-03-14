@@ -1,5 +1,7 @@
 // Azure Blob Storage module
+@minLength(3)
 param projectName string
+@minLength(2)
 param environment string
 param location string
 param tags object
@@ -58,5 +60,7 @@ resource exportsContainer 'Microsoft.Storage/storageAccounts/blobServices/contai
 }
 
 output accountName string = storageAccount.name
+// Key Vault stores the secret; this output is only consumed by the keyVault module in the same deployment
+#disable-next-line outputs-should-not-contain-secrets
 output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${az.environment().suffixes.storage}'
 output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob

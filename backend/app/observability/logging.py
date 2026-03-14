@@ -57,8 +57,8 @@ _REDACTED = "***REDACTED***"
 
 
 def _redact_sensitive_data(
-    logger: Any,  # noqa: ARG001
-    method_name: str,  # noqa: ARG001
+    logger: Any,
+    method_name: str,
     event_dict: dict[str, Any],
 ) -> dict[str, Any]:
     """Structlog processor that redacts sensitive values from log entries."""
@@ -81,8 +81,8 @@ def _redact_sensitive_data(
 
 
 def _add_otel_context(
-    logger: Any,  # noqa: ARG001
-    method_name: str,  # noqa: ARG001
+    logger: Any,
+    method_name: str,
     event_dict: dict[str, Any],
 ) -> dict[str, Any]:
     """Inject OpenTelemetry trace and span IDs into log entries if available."""
@@ -106,8 +106,8 @@ def _make_service_processor(service_name: str):
     """Create a processor that adds the service name to every log entry."""
 
     def _add_service(
-        logger: Any,  # noqa: ARG001
-        method_name: str,  # noqa: ARG001
+        logger: Any,
+        method_name: str,
         event_dict: dict[str, Any],
     ) -> dict[str, Any]:
         event_dict.setdefault("service", service_name)

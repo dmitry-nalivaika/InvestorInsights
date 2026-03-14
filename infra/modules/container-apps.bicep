@@ -4,6 +4,7 @@ param environment string
 param location string
 param tags object
 param logAnalyticsWorkspaceId string
+@secure()
 param appInsightsConnectionString string
 param acrLoginServer string
 param keyVaultName string
@@ -17,6 +18,12 @@ param frontendMinReplicas int
 param frontendMaxReplicas int
 param qdrantMinReplicas int
 param qdrantMaxReplicas int
+
+@description('Azure Files storage account name for Qdrant persistence (configure post-deploy)')
+param qdrantStorageAccountName string = 'placeholder'
+@description('Azure Files storage account key for Qdrant persistence (configure post-deploy)')
+@secure()
+param qdrantStorageAccountKey string = ''
 
 var envName = 'cae-${projectName}-${environment}'
 var isDev = environment == 'dev'
@@ -54,13 +61,14 @@ resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 }
 
 // ── Azure Files volume for Qdrant persistence ───────────────────
+// Note: defaults are placeholders — configure with real values post-deploy or via Key Vault.
 resource qdrantStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
   parent: containerAppsEnv
   name: 'qdrantstorage'
   properties: {
     azureFile: {
-      accountName: 'placeholder' // Must be configured post-deploy or via separate storage account
-      accountKey: 'placeholder'
+      accountName: qdrantStorageAccountName
+      accountKey: qdrantStorageAccountKey
       shareName: 'qdrant-data'
       accessMode: 'ReadWrite'
     }

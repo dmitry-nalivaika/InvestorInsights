@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import enum
-import uuid
-from decimal import Decimal
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -25,6 +23,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, CreatedAtMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    import uuid
+    from decimal import Decimal
+
     from app.models.profile import AnalysisProfile
 
 
@@ -91,7 +92,7 @@ class AnalysisCriterion(UUIDMixin, CreatedAtMixin, Base):
         ),
         nullable=False,
     )
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     formula: Mapped[str] = mapped_column(String(500), nullable=False)
     is_custom_formula: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false"),
@@ -105,13 +106,13 @@ class AnalysisCriterion(UUIDMixin, CreatedAtMixin, Base):
         ),
         nullable=False,
     )
-    threshold_value: Mapped[Optional[Decimal]] = mapped_column(
+    threshold_value: Mapped[Decimal | None] = mapped_column(
         Numeric(20, 6), nullable=True,
     )
-    threshold_low: Mapped[Optional[Decimal]] = mapped_column(
+    threshold_low: Mapped[Decimal | None] = mapped_column(
         Numeric(20, 6), nullable=True,
     )
-    threshold_high: Mapped[Optional[Decimal]] = mapped_column(
+    threshold_high: Mapped[Decimal | None] = mapped_column(
         Numeric(20, 6), nullable=True,
     )
     weight: Mapped[Decimal] = mapped_column(

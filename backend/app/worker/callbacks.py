@@ -12,9 +12,12 @@ These are wired into individual tasks in later phases.
 
 from __future__ import annotations
 
-from celery import Task
+from typing import TYPE_CHECKING
 
 from app.observability.logging import get_logger
+
+if TYPE_CHECKING:
+    from celery import Task
 
 logger = get_logger(__name__)
 

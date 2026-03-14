@@ -13,12 +13,14 @@ NFR-500: All operations MUST carry a request_id for distributed tracing.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.requests import Request
-from starlette.responses import Response
+
+if TYPE_CHECKING:
+    from starlette.requests import Request
+    from starlette.responses import Response
 
 _REQUEST_ID_HEADER = "X-Request-ID"
 
@@ -36,7 +38,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
 
         # Bind to structlog context so all log entries include request_id
-        ctx_token: Any = structlog.contextvars.bind_contextvars(request_id=request_id)
+        structlog.contextvars.bind_contextvars(request_id=request_id)
 
         try:
             response = await call_next(request)

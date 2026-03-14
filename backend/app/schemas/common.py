@@ -3,11 +3,12 @@
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
-from typing import Generic, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    import uuid
 
 T = TypeVar("T")
 
@@ -35,7 +36,7 @@ class PaginationParams(AppBaseModel):
 class PaginatedResponse(AppBaseModel, Generic[T]):
     """Envelope for paginated list responses."""
 
-    items: List[T]
+    items: list[T]
     total: int = Field(..., ge=0)
     limit: int
     offset: int
@@ -47,8 +48,8 @@ class PaginatedResponse(AppBaseModel, Generic[T]):
 class ErrorDetail(AppBaseModel):
     """Optional structured detail attached to an error response."""
 
-    field: Optional[str] = None
-    reason: Optional[str] = None
+    field: str | None = None
+    reason: str | None = None
 
 
 class ErrorResponse(AppBaseModel):
@@ -57,7 +58,7 @@ class ErrorResponse(AppBaseModel):
     status: int
     error: str
     message: str
-    details: Optional[List[ErrorDetail]] = None
+    details: list[ErrorDetail] | None = None
 
 
 # ── Sorting ──────────────────────────────────────────────────────
@@ -86,9 +87,9 @@ class TaskStatusResponse(AppBaseModel):
 
     task_id: uuid.UUID
     status: str = Field(..., description="pending | running | completed | failed")
-    progress: Optional[TaskProgress] = None
-    result: Optional[dict] = None
-    error: Optional[str] = None
+    progress: TaskProgress | None = None
+    result: dict | None = None
+    error: str | None = None
 
 
 # ── Health ───────────────────────────────────────────────────────
@@ -98,8 +99,8 @@ class HealthComponent(AppBaseModel):
     """Individual health-check probe result."""
 
     status: str = Field(..., description="healthy | unhealthy")
-    latency_ms: Optional[float] = None
-    error: Optional[str] = None
+    latency_ms: float | None = None
+    error: str | None = None
 
 
 class HealthResponse(AppBaseModel):

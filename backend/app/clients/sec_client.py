@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -47,7 +47,7 @@ class TickerNotFoundError(Exception):
 class SECEdgarError(Exception):
     """Raised on non-retryable SEC EDGAR API errors."""
 
-    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+    def __init__(self, message: str, status_code: int | None = None) -> None:
         self.status_code = status_code
         super().__init__(message)
 
@@ -99,7 +99,7 @@ class TokenBucketRateLimiter:
 class SECEdgarClient:
     """Async HTTP client for SEC EDGAR with rate limiting and retries."""
 
-    def __init__(self, settings: Optional[Settings] = None) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         if settings is None:
             settings = get_settings()
         self._settings = settings
@@ -108,7 +108,7 @@ class SECEdgarClient:
         self._rate_limiter = TokenBucketRateLimiter(
             max_rate=settings.sec_edgar_rate_limit,
         )
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     # ── Lifecycle ────────────────────────────────────────────────
 
@@ -138,12 +138,12 @@ class SECEdgarClient:
         method: str,
         url: str,
         *,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         """Make a rate-limited HTTP request with exponential backoff retries."""
         client = await self._get_client()
-        last_exc: Optional[Exception] = None
+        last_exc: Exception | None = None
 
         for attempt in range(_MAX_RETRIES + 1):
             await self._rate_limiter.acquire()
@@ -206,7 +206,7 @@ class SECEdgarClient:
 
     # ── Company resolution ───────────────────────────────────────
 
-    async def resolve_ticker(self, ticker: str) -> Dict[str, Any]:
+    async def resolve_ticker(self, ticker: str) -> dict[str, Any]:
         """Resolve a ticker symbol to company metadata via SEC EDGAR.
 
         Uses the company tickers JSON endpoint.
@@ -232,7 +232,7 @@ class SECEdgarClient:
 
         raise TickerNotFoundError(ticker)
 
-    async def get_company_info(self, cik: str) -> Dict[str, Any]:
+    async def get_company_info(self, cik: str) -> dict[str, Any]:
         """Fetch company metadata from the submissions endpoint.
 
         Args:
@@ -264,10 +264,10 @@ class SECEdgarClient:
         self,
         cik: str,
         *,
-        filing_types: Optional[List[str]] = None,
-        start_year: Optional[int] = None,
-        end_year: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+        filing_types: list[str] | None = None,
+        start_year: int | None = None,
+        end_year: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Get a list of filings for a company from the submissions endpoint.
 
         Args:
@@ -289,7 +289,7 @@ class SECEdgarClient:
         if not recent:
             return []
 
-        filings: List[Dict[str, Any]] = []
+        filings: list[dict[str, Any]] = []
         forms = recent.get("form", [])
         dates = recent.get("filingDate", [])
         accessions = recent.get("accessionNumber", [])
@@ -334,7 +334,7 @@ class SECEdgarClient:
 
     # ── XBRL company facts ───────────────────────────────────────
 
-    async def get_company_facts(self, cik: str) -> Dict[str, Any]:
+    async def get_company_facts(self, cik: str) -> dict[str, Any]:
         """Fetch all XBRL financial data for a company.
 
         Uses the ``companyfacts`` endpoint which returns all historical
@@ -405,12 +405,12 @@ class SECEdgarClient:
 # Module-level singleton
 # =====================================================================
 
-_sec_client: Optional[SECEdgarClient] = None
+_sec_client: SECEdgarClient | None = None
 
 
-def init_sec_client(settings: Optional[Settings] = None) -> SECEdgarClient:
+def init_sec_client(settings: Settings | None = None) -> SECEdgarClient:
     """Initialise the module-level SEC EDGAR client singleton."""
-    global _sec_client  # noqa: PLW0603
+    global _sec_client
     _sec_client = SECEdgarClient(settings)
     logger.info("SEC EDGAR client initialised")
     return _sec_client
@@ -418,7 +418,7 @@ def init_sec_client(settings: Optional[Settings] = None) -> SECEdgarClient:
 
 async def close_sec_client() -> None:
     """Close the module-level SEC EDGAR client."""
-    global _sec_client  # noqa: PLW0603
+    global _sec_client
     if _sec_client is not None:
         await _sec_client.close()
         _sec_client = None

@@ -13,10 +13,11 @@ Validates:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
-import pytest
-from fastapi.testclient import TestClient
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
 
 HEALTH_URL = "/api/v1/health"
 

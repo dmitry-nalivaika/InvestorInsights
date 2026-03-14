@@ -9,8 +9,8 @@ Create Date: 2025-01-01 00:00:00+00:00
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID
 
 # ── Alembic identifiers ─────────────────────────────────────────
