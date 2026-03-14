@@ -96,6 +96,8 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning:sqlalchemy.*",
     "ignore:urllib3 v2 only supports OpenSSL:Warning",
+    "ignore:builtin type Swig.*:DeprecationWarning",
+    "ignore:builtin type swigvarlink:DeprecationWarning",
 ]
 timeout = 30
 timeout_method = "signal"
