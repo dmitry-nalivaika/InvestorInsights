@@ -109,6 +109,10 @@ def detect_file_type(data: bytes) -> str:
     if stripped.startswith((b"<!", b"<h", b"<H")):
         return "html"
 
+    # SEC Inline XBRL filings start with an XML declaration (<?xml ...)
+    if stripped.startswith((b"<?xm", b"<?XM")):
+        return "html"
+
     raise IngestionError(
         "Unsupported file type. Only PDF and HTML files are accepted. "
         "File does not match expected magic bytes.",
