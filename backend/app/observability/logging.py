@@ -30,6 +30,7 @@ _SENSITIVE_KEYS = frozenset(
         "api_key",
         "api-key",
         "apikey",
+        "x-api-key",
         "password",
         "secret",
         "token",
@@ -39,8 +40,10 @@ _SENSITIVE_KEYS = frozenset(
         "connectionstring",
         "azure_openai_api_key",
         "openai_api_key",
+        "qdrant_api_key",
         "db_password",
         "redis_password",
+        "database_url",
         "azure_storage_connection_string",
         "applicationinsights_connection_string",
     }
@@ -51,6 +54,7 @@ _SENSITIVE_VALUE_PATTERNS = [
     re.compile(r"DefaultEndpointsProtocol=https;AccountName=.*", re.ASCII),  # Azure conn strings
     re.compile(r"postgresql(\+asyncpg)?://[^@]+@", re.ASCII),  # DB URLs with creds
     re.compile(r"redis://:[^@]+@", re.ASCII),  # Redis URLs with password
+    re.compile(r"InstrumentationKey=[0-9a-f-]+", re.ASCII),  # App Insights key
 ]
 
 _REDACTED = "***REDACTED***"
