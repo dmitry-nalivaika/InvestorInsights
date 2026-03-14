@@ -1,8 +1,9 @@
 // filepath: frontend/src/components/documents/documents-tab.tsx
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, RefreshCw } from "lucide-react";
+import { FileText, RefreshCw, Download } from "lucide-react";
 import { documentsApi } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,9 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "se
 };
 
 export function DocumentsTab({ companyId }: { companyId: string }) {
+  const [fetchStatus, setFetchStatus] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["documents", companyId],
     queryFn: () => documentsApi.list(companyId, { limit: 100 }),
@@ -28,13 +32,60 @@ export function DocumentsTab({ companyId }: { companyId: string }) {
 
   const documents = data?.items ?? [];
 
+  const handleFetchSec = async () => {
+    setIsFetching(true);
+    setFetchStatus(null);
+    try {
+      const result = await documentsApi.fetchSec(companyId, {
+        filing_types: ["10-K", "10-Q"],
+        years_back: 3,
+      });
+      setFetchStatus({
+        message: `${result.message}. Estimated ${result.estimated_filings} filings. Refresh in a minute to see results.`,
+        type: "success",
+      });
+      // Auto-refresh the list after a delay
+      setTimeout(() => refetch(), 15000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to fetch from SEC EDGAR";
+      setFetchStatus({ message, type: "error" });
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {fetchStatus && (
+        <div
+          className={`rounded-lg px-4 py-3 text-sm ${
+            fetchStatus.type === "success"
+              ? "bg-green-50 text-green-800 border border-green-200"
+              : "bg-red-50 text-red-800 border border-red-200"
+          }`}
+        >
+          {fetchStatus.message}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">
           {data?.total ?? 0} documents
         </p>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleFetchSec}
+            disabled={isFetching}
+          >
+            {isFetching ? (
+              <Spinner className="h-3.5 w-3.5" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            {isFetching ? "Fetching…" : "Fetch from SEC"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-3.5 w-3.5" />
             Refresh

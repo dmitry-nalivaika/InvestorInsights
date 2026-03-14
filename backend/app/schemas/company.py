@@ -33,6 +33,7 @@ class CompanyUpdate(AppBaseModel):
     """PUT /api/v1/companies/{company_id} — partial update."""
 
     name: str | None = Field(None, max_length=255)
+    cik: str | None = Field(None, max_length=20)
     sector: str | None = Field(None, max_length=100)
     industry: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
