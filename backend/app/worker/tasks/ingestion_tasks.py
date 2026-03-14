@@ -32,9 +32,90 @@ def _run_async(coro):
         return asyncio.run(coro)
 
 
+async def _try_extract_xbrl_financials(
+    document_id: str,
+    company_id: str,
+    cik: str | None,
+    fiscal_year: int | None,
+    session: object,
+) -> dict[str, object]:
+    """Best-effort XBRL financial data extraction (T820).
+
+    Attempts to extract structured financial data via the SEC XBRL API.
+    Never raises — logs warnings and returns a result dict.
+
+    Returns:
+        Dict with keys: ``xbrl_attempted``, ``xbrl_periods_stored``, ``xbrl_warning``.
+    """
+    from app.services.financial_service import FinancialService
+    import uuid as _uuid
+
+    if not cik:
+        logger.info(
+            "Skipping XBRL extraction: company has no CIK",
+            document_id=document_id,
+            company_id=company_id,
+        )
+        return {
+            "xbrl_attempted": False,
+            "xbrl_periods_stored": 0,
+            "xbrl_warning": "Company has no CIK — XBRL extraction skipped",
+        }
+
+    try:
+        svc = FinancialService(session)  # type: ignore[arg-type]
+        stored = await svc.extract_and_store_financials(
+            company_id=_uuid.UUID(company_id),
+            cik=cik,
+            document_id=_uuid.UUID(document_id),
+            start_year=fiscal_year,
+            end_year=fiscal_year,
+        )
+
+        if stored == 0:
+            logger.warning(
+                "No XBRL financial data found for filing — text ingestion unaffected",
+                document_id=document_id,
+                company_id=company_id,
+                cik=cik,
+                fiscal_year=fiscal_year,
+            )
+            return {
+                "xbrl_attempted": True,
+                "xbrl_periods_stored": 0,
+                "xbrl_warning": "No XBRL data available for this filing",
+            }
+
+        logger.info(
+            "XBRL financial data extracted successfully",
+            document_id=document_id,
+            company_id=company_id,
+            periods_stored=stored,
+        )
+        return {
+            "xbrl_attempted": True,
+            "xbrl_periods_stored": stored,
+            "xbrl_warning": None,
+        }
+
+    except Exception as exc:
+        logger.warning(
+            "XBRL extraction failed — text ingestion unaffected",
+            document_id=document_id,
+            company_id=company_id,
+            error=str(exc),
+        )
+        return {
+            "xbrl_attempted": True,
+            "xbrl_periods_stored": 0,
+            "xbrl_warning": f"XBRL extraction failed: {exc}",
+        }
+
+
 async def _ingest_document_async(document_id: str) -> dict:
     """Async implementation of document ingestion."""
     from app.config import get_settings
+    from app.db.repositories.company_repo import CompanyRepository
     from app.db.repositories.document_repo import DocumentRepository
     from app.db.session import get_session_factory
     from app.ingestion.pipeline import IngestionError, run_ingestion_pipeline
@@ -60,10 +141,29 @@ async def _ingest_document_async(document_id: str) -> dict:
 
             await session.commit()
 
+            # ── T820: Best-effort XBRL financial extraction ──────
+            # Runs AFTER text ingestion succeeds. Failures here
+            # are logged but never block the document from being READY.
+            company_repo = CompanyRepository(session)
+            company = await company_repo.get_by_id(doc.company_id)
+            cik = company.cik if company else None
+
+            xbrl_result = await _try_extract_xbrl_financials(
+                document_id=document_id,
+                company_id=str(doc.company_id),
+                cik=cik,
+                fiscal_year=doc.fiscal_year,
+                session=session,
+            )
+
+            if xbrl_result.get("xbrl_periods_stored"):
+                await session.commit()
+
             return {
                 "status": "completed",
                 "document_id": document_id,
                 **result.to_dict(),
+                **xbrl_result,
             }
 
         except IngestionError as exc:
