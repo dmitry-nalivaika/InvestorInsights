@@ -35,6 +35,13 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 
+[tool.ruff.lint.per-file-ignores]
+# SQLAlchemy models need stdlib imports (uuid, datetime, Decimal) at runtime
+# because `from __future__ import annotations` turns all annotations into
+# strings that SQLAlchemy evaluates via eval(). TC003 wants them in
+# TYPE_CHECKING blocks, which breaks at runtime.
+"backend/app/models/*.py" = ["TC003"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

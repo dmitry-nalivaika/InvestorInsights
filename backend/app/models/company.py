@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -26,11 +26,11 @@ class Company(UUIDMixin, TimestampMixin, Base):
 
     ticker: Mapped[str] = mapped_column(String(10), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    cik: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
-    sector: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    industry: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata_: Mapped[dict | None] = mapped_column(
+    cik: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    sector: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    industry: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
         "metadata", JSONB, server_default=text("'{}'::jsonb"),
     )
 

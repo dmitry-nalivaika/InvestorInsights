@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import uuid
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -12,8 +13,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, CreatedAtMixin, UUIDMixin
 
 if TYPE_CHECKING:
-    import uuid
-
     from app.models.chunk import DocumentChunk
     from app.models.document import Document
 
@@ -33,14 +32,14 @@ class DocumentSection(UUIDMixin, CreatedAtMixin, Base):
         index=True,
     )
     section_key: Mapped[str] = mapped_column(String(50), nullable=False)
-    section_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    section_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     content_text: Mapped[str] = mapped_column(Text, nullable=False)
-    page_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    page_end: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    page_start: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    page_end: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     char_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0"),
     )
-    token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # ── Relationships ────────────────────────────────────────────
     document: Mapped[Document] = relationship("Document", back_populates="sections")

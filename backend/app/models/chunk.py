@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import uuid
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -12,8 +13,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, CreatedAtMixin, UUIDMixin
 
 if TYPE_CHECKING:
-    import uuid
-
     from app.models.company import Company
     from app.models.document import Document
     from app.models.section import DocumentSection
@@ -33,7 +32,7 @@ class DocumentChunk(UUIDMixin, CreatedAtMixin, Base):
         nullable=False,
         index=True,
     )
-    section_id: Mapped[uuid.UUID | None] = mapped_column(
+    section_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("document_sections.id", ondelete="SET NULL"),
         nullable=True,
@@ -49,16 +48,16 @@ class DocumentChunk(UUIDMixin, CreatedAtMixin, Base):
     char_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0"),
     )
-    token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    vector_id: Mapped[str | None] = mapped_column(String(200), nullable=True, index=True)
+    token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    embedding_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    vector_id: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
     metadata_: Mapped[dict] = mapped_column(
         "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"),
     )
 
     # ── Relationships ────────────────────────────────────────────
     document: Mapped[Document] = relationship("Document", back_populates="chunks")
-    section: Mapped[DocumentSection | None] = relationship(
+    section: Mapped[Optional[DocumentSection]] = relationship(
         "DocumentSection", back_populates="chunks",
     )
     company: Mapped[Company] = relationship("Company", back_populates="document_chunks")

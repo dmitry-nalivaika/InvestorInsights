@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -21,7 +21,7 @@ class AnalysisProfile(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "analysis_profiles"
 
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_default: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false"),
     )
