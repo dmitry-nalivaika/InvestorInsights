@@ -219,4 +219,4 @@ def fetch_sec_filings(
             company_id=company_id,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

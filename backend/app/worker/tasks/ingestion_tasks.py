@@ -141,7 +141,7 @@ def ingest_document(self, document_id: str) -> dict:
             error=str(exc),
             retry=self.request.retries,
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @celery_app.task(
@@ -167,4 +167,4 @@ def reprocess_document(self, document_id: str) -> dict:
             document_id=document_id,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

@@ -179,10 +179,7 @@ def split_into_sections(
     # Build sections from consecutive matches
     sections: list[Section] = []
     for i, (key, title, start) in enumerate(matches):
-        if i + 1 < len(matches):
-            end = matches[i + 1][2]
-        else:
-            end = len(text)
+        end = matches[i + 1][2] if i + 1 < len(matches) else len(text)
 
         content = text[start:end].strip()
         if content:

@@ -8,9 +8,8 @@ and retrieval for the financials API.
 from __future__ import annotations
 
 from datetime import date
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from app.api.middleware.error_handler import NotFoundError, ValidationError
 from app.clients.sec_client import SECEdgarClient, get_sec_client
 from app.db.repositories.financial_repo import FinancialRepository
 from app.observability.logging import get_logger

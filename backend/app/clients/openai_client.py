@@ -549,7 +549,6 @@ class OpenAIClient:
         chunk_count = 0
         try:
             async for chunk in stream:
-                delta = chunk.choices[0].delta if chunk.choices else None
                 choice = chunk.choices[0] if chunk.choices else None
                 if choice is None:
                     continue

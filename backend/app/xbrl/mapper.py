@@ -7,15 +7,12 @@ financial statements keyed by (fiscal_year, fiscal_quarter).
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 from app.observability.logging import get_logger
 from app.xbrl.tag_registry import (
     ALL_MAPPINGS,
-    BALANCE_SHEET_MAPPINGS,
-    CASH_FLOW_MAPPINGS,
-    INCOME_STATEMENT_MAPPINGS,
     TagMapping,
 )
 
@@ -141,7 +138,6 @@ def _extract_mapping_values(
 
             end_date = fact.get("end", "")
             start_date = fact.get("start")
-            form = fact.get("form", "")
 
             if not end_date:
                 continue

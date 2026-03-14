@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
 from app.api.middleware.error_handler import NotFoundError
-from app.dependencies import DbSessionDep
+from app.dependencies import DbSessionDep  # noqa: TC001 - runtime FastAPI dep
 from app.observability.logging import get_logger
 from app.schemas.financial import FinancialPeriod, FinancialsResponse
 from app.services.financial_service import FinancialService
@@ -56,7 +56,7 @@ async def list_financials(
     if company is None:
         raise NotFoundError(entity="Company", entity_id=str(company_id))
 
-    statements, total = await service.list_financials(
+    statements, _total = await service.list_financials(
         company_id=company_id,
         period_type=period_type,
         sort_order=sort_order,

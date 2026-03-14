@@ -49,6 +49,8 @@ known-first-party = ["app"]
 "backend/app/api/*.py" = ["TC003"]
 # Tests run on Python 3.9 where zip(strict=) is unavailable.
 "backend/tests/**/*.py" = ["B905"]
+# Runtime is Python 3.9 — zip(strict=) unavailable.
+"backend/app/ingestion/*.py" = ["B905"]
 
 [tool.ruff.format]
 quote-style = "double"

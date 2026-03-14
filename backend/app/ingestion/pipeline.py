@@ -53,8 +53,8 @@ class IngestionResult:
     """Result of a completed ingestion pipeline run."""
 
     __slots__ = (
-        "sections_created", "chunks_created", "vectors_upserted",
-        "page_count", "duration_seconds",
+        "chunks_created", "duration_seconds", "page_count",
+        "sections_created", "vectors_upserted",
     )
 
     def __init__(

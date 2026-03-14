@@ -40,7 +40,7 @@ logger = get_logger(__name__)
 class EmbeddingResult:
     """Result of batch embedding + upsert."""
 
-    __slots__ = ("vectors_upserted", "embedding_model", "dimensions")
+    __slots__ = ("dimensions", "embedding_model", "vectors_upserted")
 
     def __init__(
         self,

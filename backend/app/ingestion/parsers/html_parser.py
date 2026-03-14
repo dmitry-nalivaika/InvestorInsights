@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 class HTMLParseResult:
     """Result of HTML text extraction."""
 
-    __slots__ = ("text", "title", "metadata")
+    __slots__ = ("metadata", "text", "title")
 
     def __init__(
         self,

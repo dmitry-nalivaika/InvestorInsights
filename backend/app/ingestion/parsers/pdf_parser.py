@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 class PDFParseResult:
     """Result of PDF text extraction."""
 
-    __slots__ = ("text", "pages", "page_count", "metadata")
+    __slots__ = ("metadata", "page_count", "pages", "text")
 
     def __init__(
         self,

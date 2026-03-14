@@ -19,7 +19,7 @@ os.environ.setdefault("API_KEY", "test-ingestion-unit")
 os.environ.setdefault("AZURE_OPENAI_API_KEY", "fake-azure-openai-key")
 os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://fake.openai.azure.com")
 
-import pytest
+import pytest  # noqa: I001
 
 
 # =====================================================================
@@ -547,8 +547,8 @@ class TestDocumentStatusStateMachine:
     """Tests for document status transitions (T202)."""
 
     def test_valid_transitions(self) -> None:
-        from app.services.document_service import _VALID_TRANSITIONS
         from app.models.document import DocStatus
+        from app.services.document_service import _VALID_TRANSITIONS
 
         # uploaded -> parsing is valid
         assert DocStatus.PARSING in _VALID_TRANSITIONS[DocStatus.UPLOADED]
@@ -560,16 +560,16 @@ class TestDocumentStatusStateMachine:
         assert DocStatus.READY in _VALID_TRANSITIONS[DocStatus.EMBEDDING]
 
     def test_error_transitions(self) -> None:
-        from app.services.document_service import _VALID_TRANSITIONS
         from app.models.document import DocStatus
+        from app.services.document_service import _VALID_TRANSITIONS
 
         # Any non-terminal state can go to error
         for status in (DocStatus.UPLOADED, DocStatus.PARSING, DocStatus.PARSED, DocStatus.EMBEDDING):
             assert DocStatus.ERROR in _VALID_TRANSITIONS[status]
 
     def test_retry_from_error(self) -> None:
-        from app.services.document_service import _VALID_TRANSITIONS
         from app.models.document import DocStatus
+        from app.services.document_service import _VALID_TRANSITIONS
 
         # error -> parsing (retry) is valid
         assert DocStatus.PARSING in _VALID_TRANSITIONS[DocStatus.ERROR]

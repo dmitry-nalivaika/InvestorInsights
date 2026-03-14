@@ -17,8 +17,8 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 
 from app.api.middleware.error_handler import NotFoundError, ValidationError
-from app.api.pagination import PaginationQuery
-from app.dependencies import DbSessionDep, StorageDep
+from app.api.pagination import PaginationQuery  # noqa: TC001 - runtime FastAPI dep
+from app.dependencies import DbSessionDep, StorageDep  # noqa: TC001 - runtime FastAPI dep
 from app.models.document import DocType
 from app.observability.logging import get_logger
 from app.schemas.document import (
@@ -89,7 +89,7 @@ def _parse_doc_type(value: str) -> DocType:
         valid = [t.value for t in DocType]
         raise ValidationError(
             f"Invalid doc_type '{value}'. Must be one of: {', '.join(valid)}"
-        )
+        ) from None
 
 
 # ── POST /companies/{company_id}/documents ──────────────────────
@@ -147,13 +147,13 @@ async def upload_document(
     except ValueError:
         raise ValidationError(
             f"Invalid filing_date format: '{filing_date}'. Expected YYYY-MM-DD."
-        )
+        ) from None
     try:
         parsed_period_end_date = date.fromisoformat(period_end_date)
     except ValueError:
         raise ValidationError(
             f"Invalid period_end_date format: '{period_end_date}'. Expected YYYY-MM-DD."
-        )
+        ) from None
 
     # Validate fiscal_year range
     if not (1990 <= fiscal_year <= 2100):

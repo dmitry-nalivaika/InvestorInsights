@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter
 
-from app.api.middleware.error_handler import NotFoundError
 from app.observability.logging import get_logger
 from app.schemas.common import TaskStatusResponse
 

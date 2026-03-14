@@ -7,7 +7,7 @@ prioritised list of XBRL tags that may contain its value.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
