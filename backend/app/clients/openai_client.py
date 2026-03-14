@@ -548,8 +548,9 @@ class OpenAIClient:
 
         chunk_count = 0
         try:
-            async for event in stream:  # type: ChatCompletionChunk
-                choice = event.choices[0] if event.choices else None
+            async for chunk in stream:
+                delta = chunk.choices[0].delta if chunk.choices else None
+                choice = chunk.choices[0] if chunk.choices else None
                 if choice is None:
                     continue
 
@@ -561,7 +562,7 @@ class OpenAIClient:
                     yield StreamChunk(
                         content=delta_content,
                         finish_reason=finish,
-                        model=event.model or model_name,
+                        model=chunk.model or model_name,
                     )
         finally:
             duration_ms = (time.monotonic() - start_time) * 1000
@@ -639,7 +640,7 @@ def init_openai_client(settings: Settings | None = None) -> OpenAIClient:
 async def close_openai_client() -> None:
     """Close the module-level OpenAI client."""
     global _openai_client
-    if _openai_client is not None:
+    if (_openai_client is not None):
         await _openai_client.close()
         _openai_client = None
         logger.info("OpenAI client singleton closed")
