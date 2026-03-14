@@ -22,6 +22,7 @@ from app.api.middleware.error_handler import register_error_handlers
 from app.api.middleware.rate_limiter import RateLimitMiddleware
 from app.api.middleware.request_id import RequestIDMiddleware
 from app.api.router import api_router
+from app.clients.openai_client import close_openai_client, init_openai_client
 from app.clients.qdrant_client import close_qdrant_client, init_qdrant_client
 from app.clients.storage_client import close_storage_client, init_storage_client
 from app.config import AppEnvironment, Settings, get_settings
@@ -57,11 +58,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     init_engine(settings)
     await init_storage_client(settings)
     init_qdrant_client(settings)
+    init_openai_client(settings)
     _startup_time = time.time()
 
     yield
 
     # ── Shutdown ─────────────────────────────────────────────────
+    await close_openai_client()
     await close_qdrant_client()
     await close_storage_client()
     await dispose_engine()
