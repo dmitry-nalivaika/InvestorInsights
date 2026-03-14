@@ -62,8 +62,8 @@ logger = get_logger(__name__)
 # Retry configuration (plan.md — Azure OpenAI retry policy)
 # =====================================================================
 
-_MAX_RETRIES = 3
-_BASE_BACKOFF_SECONDS = 1.0
+_MAX_RETRIES = 6
+_BASE_BACKOFF_SECONDS = 2.0
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503}
 
 
@@ -268,7 +268,7 @@ class OpenAIClient:
                         ra_value = retry_headers.get("retry-after") or retry_headers.get("Retry-After")
                         if ra_value:
                             with contextlib.suppress(ValueError, TypeError):
-                                wait = min(float(ra_value), 60.0)
+                                wait = min(float(ra_value), 120.0)
                     logger.warning(
                         "LLM rate limited, retrying",
                         operation=operation,

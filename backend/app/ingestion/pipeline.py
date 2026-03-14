@@ -38,7 +38,7 @@ logger = get_logger(__name__)
 
 # Magic byte prefixes for file type detection (T213)
 _PDF_MAGIC = b"%PDF"
-_HTML_PREFIXES = (b"<!DO", b"<htm", b"<HTM", b"<!do", b"<HEA", b"<hea", b"<BOD", b"<bod")
+_HTML_PREFIXES = (b"<!DO", b"<htm", b"<HTM", b"<!do", b"<HEA", b"<hea", b"<BOD", b"<bod", b"<?xm", b"<?XM")
 
 
 class IngestionError(Exception):
@@ -107,10 +107,6 @@ def detect_file_type(data: bytes) -> str:
     # Also check for HTML further into the file (some SEC filings start with whitespace/BOM)
     stripped = data.lstrip()[:10]
     if stripped.startswith((b"<!", b"<h", b"<H")):
-        return "html"
-
-    # SEC Inline XBRL filings start with an XML declaration (<?xml ...)
-    if stripped.startswith((b"<?xm", b"<?XM")):
         return "html"
 
     raise IngestionError(
