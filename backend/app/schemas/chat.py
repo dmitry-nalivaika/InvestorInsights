@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from app.schemas.common import AppBaseModel, PaginatedResponse
 
@@ -90,6 +90,8 @@ class SSESourcesEvent(AppBaseModel):
 
 class SSETokenEvent(AppBaseModel):
     """SSE 'token' event — single streamed token."""
+
+    model_config = ConfigDict(str_strip_whitespace=False)
 
     token: str
 
