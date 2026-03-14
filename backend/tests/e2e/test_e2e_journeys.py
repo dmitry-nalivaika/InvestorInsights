@@ -309,7 +309,7 @@ class TestCompanyJourney:
             [_mock_company_list_item()], 1,
         )
         mock_company_svc.get_bulk_summary_stats.return_value = {
-            _COMPANY_ID: {"doc_count": 3, "latest_filing_date": "2024-03-15", "readiness_pct": 0.67},
+            _COMPANY_ID: {"doc_count": 3, "latest_filing_date": date(2024, 3, 15), "readiness_pct": 0.67},
         }
 
         resp = e2e_client.get("/api/v1/companies", headers=auth_header)
