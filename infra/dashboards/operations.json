@@ -1,0 +1,298 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2020-09-01/tenantDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "InvestorInsights Operational Dashboard (T808). Import via Azure Portal → Dashboard → Upload."
+  },
+  "resources": [],
+  "outputs": {},
+  "variables": {},
+  "lenses": {
+    "0": {
+      "order": 0,
+      "parts": {
+        "0": {
+          "position": { "x": 0, "y": 0, "colSpan": 6, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/HubsExtension/PartType/MarkdownPart",
+            "settings": {
+              "content": {
+                "settings": {
+                  "content": "# InvestorInsights — Operations\n\n**Environment**: `${environment}`\n\n| Metric | Target |\n|--------|--------|\n| API p95 | < 200ms |\n| Chat TTFT p95 | < 5s |\n| Error rate | < 1% |\n| DB CPU | < 80% |\n\nSee [runbooks](https://github.com/your-org/investorinsights/tree/main/docs/runbooks) for incident response.",
+                  "title": "Platform Health",
+                  "subtitle": "InvestorInsights"
+                }
+              }
+            }
+          }
+        },
+        "1": {
+          "position": { "x": 6, "y": 0, "colSpan": 6, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/Microsoft_Azure_Monitoring/PartType/MetricsChartPart",
+            "settings": {},
+            "asset": {
+              "type": "ApplicationInsights",
+              "idInputName": "ComponentId"
+            },
+            "inputs": [
+              {
+                "name": "options",
+                "value": {
+                  "chart": {
+                    "title": "Request Rate & Failures (5 min)",
+                    "metrics": [
+                      {
+                        "resourceMetadata": { "resourceType": "microsoft.insights/components" },
+                        "name": "requests/count",
+                        "aggregationType": "Sum",
+                        "metricVisualization": { "displayName": "Requests", "color": "#0078D4" }
+                      },
+                      {
+                        "resourceMetadata": { "resourceType": "microsoft.insights/components" },
+                        "name": "requests/failed",
+                        "aggregationType": "Sum",
+                        "metricVisualization": { "displayName": "Failed", "color": "#E81123" }
+                      }
+                    ],
+                    "timespan": { "grain": "PT5M", "relative": { "duration": 4, "timeUnit": "Hour" } },
+                    "visualization": { "chartType": "Line" }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "2": {
+          "position": { "x": 0, "y": 4, "colSpan": 6, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/Microsoft_Azure_Monitoring/PartType/MetricsChartPart",
+            "settings": {},
+            "asset": {
+              "type": "ApplicationInsights",
+              "idInputName": "ComponentId"
+            },
+            "inputs": [
+              {
+                "name": "options",
+                "value": {
+                  "chart": {
+                    "title": "API Response Time p50 / p95 / p99",
+                    "metrics": [
+                      {
+                        "resourceMetadata": { "resourceType": "microsoft.insights/components" },
+                        "name": "requests/duration",
+                        "aggregationType": "Percentile50",
+                        "metricVisualization": { "displayName": "p50", "color": "#00BCF2" }
+                      },
+                      {
+                        "resourceMetadata": { "resourceType": "microsoft.insights/components" },
+                        "name": "requests/duration",
+                        "aggregationType": "Percentile95",
+                        "metricVisualization": { "displayName": "p95", "color": "#FF8C00" }
+                      },
+                      {
+                        "resourceMetadata": { "resourceType": "microsoft.insights/components" },
+                        "name": "requests/duration",
+                        "aggregationType": "Percentile99",
+                        "metricVisualization": { "displayName": "p99", "color": "#E81123" }
+                      }
+                    ],
+                    "timespan": { "grain": "PT5M", "relative": { "duration": 4, "timeUnit": "Hour" } },
+                    "visualization": { "chartType": "Line" }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "3": {
+          "position": { "x": 6, "y": 4, "colSpan": 6, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/Microsoft_Azure_Monitoring/PartType/MetricsChartPart",
+            "settings": {},
+            "asset": {
+              "type": "PostgreSQL",
+              "idInputName": "ResourceId"
+            },
+            "inputs": [
+              {
+                "name": "options",
+                "value": {
+                  "chart": {
+                    "title": "PostgreSQL — CPU % & Active Connections",
+                    "metrics": [
+                      {
+                        "resourceMetadata": { "resourceType": "Microsoft.DBforPostgreSQL/flexibleServers" },
+                        "name": "cpu_percent",
+                        "aggregationType": "Average",
+                        "metricVisualization": { "displayName": "CPU %", "color": "#E81123" }
+                      },
+                      {
+                        "resourceMetadata": { "resourceType": "Microsoft.DBforPostgreSQL/flexibleServers" },
+                        "name": "active_connections",
+                        "aggregationType": "Average",
+                        "metricVisualization": { "displayName": "Connections", "color": "#0078D4" }
+                      }
+                    ],
+                    "timespan": { "grain": "PT5M", "relative": { "duration": 4, "timeUnit": "Hour" } },
+                    "visualization": { "chartType": "Line" }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "4": {
+          "position": { "x": 0, "y": 8, "colSpan": 6, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/Microsoft_Azure_Monitoring/PartType/MetricsChartPart",
+            "settings": {},
+            "asset": {
+              "type": "PostgreSQL",
+              "idInputName": "ResourceId"
+            },
+            "inputs": [
+              {
+                "name": "options",
+                "value": {
+                  "chart": {
+                    "title": "PostgreSQL — Storage & Memory %",
+                    "metrics": [
+                      {
+                        "resourceMetadata": { "resourceType": "Microsoft.DBforPostgreSQL/flexibleServers" },
+                        "name": "storage_percent",
+                        "aggregationType": "Average",
+                        "metricVisualization": { "displayName": "Storage %", "color": "#FF8C00" }
+                      },
+                      {
+                        "resourceMetadata": { "resourceType": "Microsoft.DBforPostgreSQL/flexibleServers" },
+                        "name": "memory_percent",
+                        "aggregationType": "Average",
+                        "metricVisualization": { "displayName": "Memory %", "color": "#00BCF2" }
+                      }
+                    ],
+                    "timespan": { "grain": "PT5M", "relative": { "duration": 24, "timeUnit": "Hour" } },
+                    "visualization": { "chartType": "Line" }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "5": {
+          "position": { "x": 6, "y": 8, "colSpan": 6, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/Microsoft_Azure_Monitoring/PartType/MetricsChartPart",
+            "settings": {},
+            "asset": {
+              "type": "ContainerApps",
+              "idInputName": "ResourceId"
+            },
+            "inputs": [
+              {
+                "name": "options",
+                "value": {
+                  "chart": {
+                    "title": "Container Apps — Replica Count & CPU",
+                    "metrics": [
+                      {
+                        "resourceMetadata": { "resourceType": "microsoft.app/managedenvironments" },
+                        "name": "Replicas",
+                        "aggregationType": "Average",
+                        "metricVisualization": { "displayName": "Replicas", "color": "#0078D4" }
+                      },
+                      {
+                        "resourceMetadata": { "resourceType": "microsoft.app/managedenvironments" },
+                        "name": "UsageNanoCores",
+                        "aggregationType": "Average",
+                        "metricVisualization": { "displayName": "CPU (nanocores)", "color": "#E81123" }
+                      }
+                    ],
+                    "timespan": { "grain": "PT5M", "relative": { "duration": 4, "timeUnit": "Hour" } },
+                    "visualization": { "chartType": "Line" }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "6": {
+          "position": { "x": 0, "y": 12, "colSpan": 12, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/Microsoft_Azure_Monitoring/PartType/LogsQueryChartPart",
+            "settings": {},
+            "asset": {
+              "type": "ApplicationInsights",
+              "idInputName": "ComponentId"
+            },
+            "inputs": [
+              {
+                "name": "query",
+                "value": "requests\n| where timestamp > ago(4h)\n| summarize\n    totalReqs = count(),\n    failedReqs = countif(resultCode startswith '5'),\n    p50_ms = percentile(duration, 50),\n    p95_ms = percentile(duration, 95),\n    p99_ms = percentile(duration, 99)\n    by bin(timestamp, 5m)\n| project timestamp, totalReqs, failedReqs, p50_ms, p95_ms, p99_ms\n| order by timestamp desc"
+              },
+              {
+                "name": "chartType",
+                "value": "Table"
+              },
+              {
+                "name": "title",
+                "value": "Request Summary (5 min buckets)"
+              }
+            ]
+          }
+        },
+        "7": {
+          "position": { "x": 0, "y": 16, "colSpan": 12, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/Microsoft_Azure_Monitoring/PartType/LogsQueryChartPart",
+            "settings": {},
+            "asset": {
+              "type": "ApplicationInsights",
+              "idInputName": "ComponentId"
+            },
+            "inputs": [
+              {
+                "name": "query",
+                "value": "requests\n| where timestamp > ago(4h)\n| where url has '/chat'\n| summarize\n    chatReqs = count(),\n    p50_ms = percentile(duration, 50),\n    p95_ms = percentile(duration, 95)\n    by bin(timestamp, 5m)\n| project timestamp, chatReqs, p50_ms, p95_ms\n| order by timestamp desc"
+              },
+              {
+                "name": "chartType",
+                "value": "Line"
+              },
+              {
+                "name": "title",
+                "value": "Chat Endpoint Latency (TTFT proxy)"
+              }
+            ]
+          }
+        },
+        "8": {
+          "position": { "x": 0, "y": 20, "colSpan": 12, "rowSpan": 4 },
+          "metadata": {
+            "type": "Extension/Microsoft_Azure_Monitoring/PartType/LogsQueryChartPart",
+            "settings": {},
+            "asset": {
+              "type": "ApplicationInsights",
+              "idInputName": "ComponentId"
+            },
+            "inputs": [
+              {
+                "name": "query",
+                "value": "requests\n| where timestamp > ago(4h)\n| where resultCode startswith '5' or resultCode startswith '4'\n| summarize count() by resultCode, bin(timestamp, 5m)\n| order by timestamp desc"
+              },
+              {
+                "name": "chartType",
+                "value": "StackedBar"
+              },
+              {
+                "name": "title",
+                "value": "Error Breakdown (4xx / 5xx)"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

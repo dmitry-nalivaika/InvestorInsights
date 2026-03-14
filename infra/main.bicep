@@ -91,6 +91,12 @@ param qdrantMinReplicas int = 0
 @description('Container Apps — Qdrant max replicas')
 param qdrantMaxReplicas int = 1
 
+@description('Email for alert notifications')
+param alertEmail string = 'ops@investorinsights.dev'
+
+@description('Monthly budget limit in USD')
+param monthlyBudgetUsd int = environment == 'dev' ? 50 : 500
+
 // ── Naming Convention ───────────────────────────────────────────
 var resourceGroupName = 'rg-${projectName}-${environment}'
 var tags = {
@@ -265,6 +271,23 @@ module containerApps 'modules/container-apps.bicep' = {
     frontendMaxReplicas: frontendMaxReplicas
     qdrantMinReplicas: qdrantMinReplicas
     qdrantMaxReplicas: qdrantMaxReplicas
+  }
+}
+
+// ── Alerts + Budget Monitoring (T807/T807a) ─────────────────────
+module alerts 'modules/alerts.bicep' = {
+  name: 'deploy-alerts'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    projectName: projectName
+    environment: environment
+    location: location
+    tags: tags
+    appInsightsResourceId: appInsights.outputs.resourceId
+    containerAppsEnvironmentId: containerApps.outputs.environmentId
+    postgresqlResourceId: postgresql.outputs.resourceId
+    alertEmail: alertEmail
+    monthlyBudgetUsd: monthlyBudgetUsd
   }
 }
 

@@ -41,6 +41,7 @@ These scenarios verify the system works end-to-end after each implementation pha
    ```
    curl -X POST http://localhost:8000/api/v1/companies \
      -H "X-API-Key: dev-key" \
+     -H "Content-Type: application/json" \
      -d '{"ticker": "AAPL"}'
    # → 409 Conflict
    ```
@@ -119,8 +120,9 @@ These scenarios verify the system works end-to-end after each implementation pha
 
 1. Start a chat:
    ```
-   curl -N http://localhost:8000/api/v1/companies/{id}/chat \
+   curl -N -X POST http://localhost:8000/api/v1/companies/{id}/chat \
      -H "X-API-Key: dev-key" \
+     -H "Content-Type: application/json" \
      -d '{"message": "What are the main risk factors for this company?"}'
    # → SSE stream: session event, sources event, token events, done event
    ```
@@ -128,15 +130,17 @@ These scenarios verify the system works end-to-end after each implementation pha
 3. Verify sources metadata returned via SSE `sources` event
 4. Send follow-up:
    ```
-   curl -N http://localhost:8000/api/v1/companies/{id}/chat \
+   curl -N -X POST http://localhost:8000/api/v1/companies/{id}/chat \
      -H "X-API-Key: dev-key" \
+     -H "Content-Type: application/json" \
      -d '{"message": "How have these risks changed over the last 3 years?", "session_id": "{session_id}"}'
    # → Contextual response referencing multiple filings
    ```
 5. Test refusal:
    ```
-   curl -N http://localhost:8000/api/v1/companies/{id}/chat \
+   curl -N -X POST http://localhost:8000/api/v1/companies/{id}/chat \
      -H "X-API-Key: dev-key" \
+     -H "Content-Type: application/json" \
      -d '{"message": "Should I buy this stock?"}'
    # → Polite decline, explains scope
    ```
@@ -153,6 +157,7 @@ These scenarios verify the system works end-to-end after each implementation pha
    ```
    curl -X POST http://localhost:8000/api/v1/analysis/profiles \
      -H "X-API-Key: dev-key" \
+     -H "Content-Type: application/json" \
      -d '{"name": "Value Investor", "criteria": [
        {"name": "Gross Margin > 40%", "category": "profitability",
         "formula": "gross_margin", "comparison": ">=", "threshold_value": 0.40,
@@ -167,6 +172,7 @@ These scenarios verify the system works end-to-end after each implementation pha
    ```
    curl -X POST http://localhost:8000/api/v1/analysis/run \
      -H "X-API-Key: dev-key" \
+     -H "Content-Type: application/json" \
      -d '{"company_ids": ["{company_id}"], "profile_id": "{profile_id}"}'
    # → 200, results with per-criterion scores, trends, AI summary
    ```
@@ -189,3 +195,25 @@ These scenarios verify the system works end-to-end after each implementation pha
 7. Navigate to Settings → View configuration
 
 **Pass criteria**: All pages render without errors. Chat streaming works in browser. No console errors.
+
+---
+
+### Scenario 7: Multi-Company Comparison (after Phase 7)
+
+**Validates**: Ranked comparison, side-by-side scoring, no-data handling.
+
+1. Register at least 3 companies (AAPL, MSFT, GOOG) and run analysis on each.
+2. Compare companies:
+   ```
+   curl -X POST http://localhost:8000/api/v1/analysis/compare \
+     -H "X-API-Key: dev-key" \
+     -H "Content-Type: application/json" \
+     -d '{"company_ids": ["{aapl_id}", "{msft_id}", "{goog_id}"], "profile_id": "{profile_id}"}'
+   # → 200, ranked_results ordered by pct_score DESC
+   ```
+3. Verify response:
+   - `ranked_results` contains all 3 companies with `rank`, `pct_score`, `grade`
+   - Each company has `criteria_results` with per-criterion `value`, `passed`, `trend`
+   - `no_data_ids` lists any companies missing financial data
+
+**Pass criteria**: Companies are ranked correctly. Comparison returns valid side-by-side data. Missing-data companies handled gracefully.

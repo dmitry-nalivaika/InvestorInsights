@@ -24,7 +24,9 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Env vars must be set BEFORE any app imports.
-os.environ.setdefault("API_KEY", "test-e2e-key")
+# Use os.environ[] (not setdefault) so these override values set by
+# integration test conftest.py when running together in the same process.
+os.environ["API_KEY"] = "test-e2e-key"
 os.environ.setdefault("AZURE_OPENAI_API_KEY", "fake-azure-openai-key")
 os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://fake.openai.azure.com")
 os.environ.setdefault("AZURE_STORAGE_CONNECTION_STRING", "")
@@ -197,9 +199,16 @@ def _mock_result(
 
 @pytest.fixture(scope="session")
 def app():
-    """Shared FastAPI app for e2e tests."""
+    """Shared FastAPI app for e2e tests.
+
+    Clears the cached Settings singleton so env vars set at the top of
+    this module (API_KEY=test-e2e-key, etc.) are picked up even when
+    integration tests ran first in the same process.
+    """
+    from app.config import get_settings
     from app.main import create_app
 
+    get_settings.cache_clear()
     return create_app()
 
 

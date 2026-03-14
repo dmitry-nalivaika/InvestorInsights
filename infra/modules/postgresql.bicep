@@ -83,3 +83,4 @@ resource firewallAllowAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallR
 
 output fqdn string = postgresServer.properties.fullyQualifiedDomainName
 output serverName string = postgresServer.name
+output resourceId string = postgresServer.id

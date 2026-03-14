@@ -371,5 +371,6 @@ resource workerKeyVaultAccess 'Microsoft.Authorization/roleAssignments@2022-04-0
 }
 
 output environmentName string = containerAppsEnv.name
+output environmentId string = containerAppsEnv.id
 output apiFqdn string = apiApp.properties.configuration.ingress.fqdn
 output frontendFqdn string = frontendApp.properties.configuration.ingress.fqdn
