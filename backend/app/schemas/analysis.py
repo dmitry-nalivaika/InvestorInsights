@@ -6,14 +6,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from app.models.criterion import ComparisonOp, CriteriaCategory
 from app.schemas.common import AppBaseModel, PaginatedResponse
-
-if TYPE_CHECKING:
-    from app.models.criterion import ComparisonOp, CriteriaCategory
 
 # ── Criteria schemas ─────────────────────────────────────────────
 

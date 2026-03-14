@@ -19,17 +19,16 @@ api_router = APIRouter(
 )
 
 # ── Sub-routers (added as each module is implemented) ────────────
+from app.api.analysis import router as analysis_router  # noqa: E402
 from app.api.chat import router as chat_router  # noqa: E402
 from app.api.companies import router as companies_router  # noqa: E402
 from app.api.documents import router as documents_router  # noqa: E402
 from app.api.financials import router as financials_router  # noqa: E402
 from app.api.tasks import router as tasks_router  # noqa: E402
 
-# from app.api.analysis import router as analysis_router
-
 api_router.include_router(companies_router)
 api_router.include_router(documents_router)
 api_router.include_router(financials_router)
 api_router.include_router(tasks_router)
 api_router.include_router(chat_router)
-# api_router.include_router(analysis_router)
+api_router.include_router(analysis_router)
