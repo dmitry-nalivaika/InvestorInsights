@@ -213,32 +213,32 @@ function TrendIcon({ trend }: { trend: string | null }) {
 
 function CriteriaTable({ result }: { result: AnalysisResult }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-left">
-            <th className="px-4 py-3 font-medium text-gray-600">Criterion</th>
-            <th className="px-4 py-3 font-medium text-gray-600">Category</th>
+            <th className="px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Criterion</th>
+            <th className="hidden sm:table-cell px-4 py-3 font-medium text-gray-600">Category</th>
             <th className="px-4 py-3 font-medium text-gray-600">Value</th>
             <th className="px-4 py-3 font-medium text-gray-600">Threshold</th>
-            <th className="px-4 py-3 font-medium text-gray-600">Trend</th>
+            <th className="hidden sm:table-cell px-4 py-3 font-medium text-gray-600">Trend</th>
             <th className="px-4 py-3 font-medium text-gray-600">Result</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {result.criteria_results.map((cr, i) => (
             <tr key={i} className="hover:bg-gray-50">
-              <td className="px-4 py-2.5 font-medium text-gray-900">
+              <td className="px-4 py-2.5 font-medium text-gray-900 whitespace-nowrap">
                 {cr.criteria_name}
               </td>
-              <td className="px-4 py-2.5">
+              <td className="hidden sm:table-cell px-4 py-2.5">
                 <Badge variant="secondary">{cr.category}</Badge>
               </td>
               <td className="px-4 py-2.5 text-gray-700">
                 {cr.latest_value != null ? cr.latest_value.toFixed(4) : "—"}
               </td>
               <td className="px-4 py-2.5 text-gray-500">{cr.threshold}</td>
-              <td className="px-4 py-2.5">
+              <td className="hidden sm:table-cell px-4 py-2.5">
                 <TrendIcon trend={cr.trend} />
               </td>
               <td className="px-4 py-2.5">

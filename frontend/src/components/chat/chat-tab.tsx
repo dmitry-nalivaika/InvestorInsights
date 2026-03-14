@@ -129,8 +129,8 @@ export function ChatTab({ companyId }: { companyId: string }) {
 
   return (
     <div className="flex h-[calc(100vh-280px)] gap-4">
-      {/* Session sidebar */}
-      <div className="w-64 flex-shrink-0 space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-white p-3">
+      {/* Session sidebar — hidden on small screens */}
+      <div className="hidden md:block w-64 flex-shrink-0 space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-white p-3">
         <Button variant="outline" size="sm" className="w-full" onClick={newChat}>
           <Plus className="h-3.5 w-3.5" />
           New Chat

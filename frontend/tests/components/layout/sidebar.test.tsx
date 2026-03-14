@@ -1,6 +1,6 @@
 // filepath: frontend/tests/components/layout/sidebar.test.tsx
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { Sidebar } from "@/components/layout/sidebar";
 
 // Mock next/navigation
@@ -24,8 +24,9 @@ describe("Sidebar", () => {
     mockUsePathname.mockReturnValue("/dashboard");
   });
 
-  it("renders the brand name", () => {
+  it("renders the brand name in the desktop sidebar", () => {
     render(<Sidebar />);
+    // Desktop aside always rendered (hidden via CSS on mobile, but in DOM)
     expect(screen.getByText("InvestorInsights")).toBeInTheDocument();
   });
 
@@ -62,5 +63,29 @@ describe("Sidebar", () => {
   it("renders the version footer", () => {
     render(<Sidebar />);
     expect(screen.getByText("InvestorInsights v1.0")).toBeInTheDocument();
+  });
+
+  it("renders mobile hamburger button", () => {
+    render(<Sidebar />);
+    expect(screen.getByLabelText("Open navigation")).toBeInTheDocument();
+  });
+
+  it("opens the mobile drawer when hamburger is clicked", () => {
+    render(<Sidebar />);
+    fireEvent.click(screen.getByLabelText("Open navigation"));
+    // Mobile drawer now also renders the nav, so we have duplicates
+    const dashboardLinks = screen.getAllByText("Dashboard");
+    expect(dashboardLinks.length).toBe(2); // desktop + mobile drawer
+    expect(screen.getByLabelText("Close navigation")).toBeInTheDocument();
+  });
+
+  it("closes the mobile drawer when close button is clicked", () => {
+    render(<Sidebar />);
+    fireEvent.click(screen.getByLabelText("Open navigation"));
+    expect(screen.getAllByText("Dashboard").length).toBe(2);
+
+    fireEvent.click(screen.getByLabelText("Close navigation"));
+    // Back to just the desktop sidebar
+    expect(screen.getAllByText("Dashboard").length).toBe(1);
   });
 });

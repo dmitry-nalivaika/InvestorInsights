@@ -81,16 +81,16 @@ export default function CompaniesPage() {
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left">
                 <th className="px-4 py-3 font-medium text-gray-600">Ticker</th>
                 <th className="px-4 py-3 font-medium text-gray-600">Name</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Sector</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium text-gray-600">Sector</th>
                 <th className="px-4 py-3 font-medium text-gray-600 text-right">Docs</th>
                 <th className="px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Added</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium text-gray-600">Added</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -108,14 +108,14 @@ export default function CompaniesPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-700">{c.name}</td>
-                  <td className="px-4 py-3 text-gray-500">{c.sector ?? "—"}</td>
+                  <td className="hidden sm:table-cell px-4 py-3 text-gray-500">{c.sector ?? "—"}</td>
                   <td className="px-4 py-3 text-right text-gray-700">
                     {c.doc_count ?? 0}
                   </td>
                   <td className="px-4 py-3">
                     <ReadinessBadge pct={c.readiness_pct ?? 0} />
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="hidden sm:table-cell px-4 py-3 text-gray-500">
                     {formatDate(c.created_at)}
                   </td>
                 </tr>

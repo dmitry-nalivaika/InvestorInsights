@@ -55,15 +55,15 @@ export function DocumentsTab({ companyId }: { companyId: string }) {
           description="Upload filings or fetch them from SEC EDGAR."
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left">
                 <th className="px-4 py-3 font-medium text-gray-600">Type</th>
                 <th className="px-4 py-3 font-medium text-gray-600">Period</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Filing Date</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium text-gray-600">Filing Date</th>
                 <th className="px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Added</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium text-gray-600">Added</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -76,7 +76,7 @@ export function DocumentsTab({ companyId }: { companyId: string }) {
                     FY{doc.fiscal_year}
                     {doc.fiscal_quarter ? ` Q${doc.fiscal_quarter}` : ""}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="hidden sm:table-cell px-4 py-3 text-gray-500">
                     {formatDate(doc.filing_date)}
                   </td>
                   <td className="px-4 py-3">
@@ -84,7 +84,7 @@ export function DocumentsTab({ companyId }: { companyId: string }) {
                       {doc.status}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="hidden sm:table-cell px-4 py-3 text-gray-500">
                     {formatDate(doc.created_at)}
                   </td>
                 </tr>

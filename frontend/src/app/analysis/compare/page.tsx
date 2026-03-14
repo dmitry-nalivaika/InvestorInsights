@@ -109,7 +109,7 @@ export default function ComparePage() {
           </div>
 
           {/* Profile selector + run */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <select
               value={selectedProfileId ?? ""}
               onChange={(e) => setSelectedProfileId(e.target.value || null)}

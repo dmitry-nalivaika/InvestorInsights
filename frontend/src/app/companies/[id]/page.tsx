@@ -77,8 +77,8 @@ export default function CompanyDetailPage() {
       />
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-6">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="-mb-px flex space-x-4 sm:space-x-6 min-w-max">
           {TABS.map((tab) => (
             <button
               key={tab.key}
