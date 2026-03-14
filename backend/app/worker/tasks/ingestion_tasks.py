@@ -20,16 +20,7 @@ logger = get_logger(__name__)
 
 def _run_async(coro):
     """Run an async coroutine from a sync Celery task."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, coro).result()
-        return loop.run_until_complete(coro)
-    except RuntimeError:
-        return asyncio.run(coro)
+    return asyncio.run(coro)
 
 
 async def _try_extract_xbrl_financials(
@@ -135,15 +126,23 @@ async def _ingest_document_async(document_id: str) -> dict:
        document as ERROR — isolating the error-status write from any dirty
        state in the original session.
     """
+    from app.clients.storage_client import init_storage_client
     from app.config import get_settings
     from app.db.repositories.company_repo import CompanyRepository
     from app.db.repositories.document_repo import DocumentRepository
-    from app.db.session import get_session_factory
+    from app.db.session import build_async_session_factory
     from app.ingestion.pipeline import IngestionError, run_ingestion_pipeline
     from app.models.document import DocStatus
 
     settings = get_settings()
-    factory = get_session_factory()
+    factory = build_async_session_factory(settings)
+
+    # Ensure storage client is initialised for worker process
+    try:
+        from app.clients.storage_client import get_storage_client
+        get_storage_client()
+    except RuntimeError:
+        await init_storage_client(settings)
 
     async with factory() as session:
         try:

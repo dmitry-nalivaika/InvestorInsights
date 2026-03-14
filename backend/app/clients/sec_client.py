@@ -104,6 +104,10 @@ class SECEdgarClient:
             settings = get_settings()
         self._settings = settings
         self._base_url = settings.sec_edgar_base_url.rstrip("/")
+        # Filing documents live on www.sec.gov, not data.sec.gov
+        self._archives_base_url = self._base_url.replace(
+            "data.sec.gov", "www.sec.gov"
+        )
         self._user_agent = settings.sec_edgar_user_agent
         self._rate_limiter = TokenBucketRateLimiter(
             max_rate=settings.sec_edgar_rate_limit,
@@ -325,7 +329,7 @@ class SECEdgarClient:
                 "primary_document": primary_doc,
                 "description": description,
                 "filing_url": (
-                    f"{self._base_url}/Archives/edgar/data/"
+                    f"{self._archives_base_url}/Archives/edgar/data/"
                     f"{int(cik_padded)}/{accession.replace('-', '')}/{primary_doc}"
                 ),
             })
@@ -372,7 +376,7 @@ class SECEdgarClient:
         cik_int = int(cik.lstrip("0") or "0")
         accession_clean = accession_number.replace("-", "")
         url = (
-            f"{self._base_url}/Archives/edgar/data/"
+            f"{self._archives_base_url}/Archives/edgar/data/"
             f"{cik_int}/{accession_clean}/{document_name}"
         )
         client = await self._get_client()

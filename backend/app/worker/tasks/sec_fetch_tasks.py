@@ -19,16 +19,7 @@ logger = get_logger(__name__)
 
 def _run_async(coro):
     """Run an async coroutine from a sync Celery task."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, coro).result()
-        return loop.run_until_complete(coro)
-    except RuntimeError:
-        return asyncio.run(coro)
+    return asyncio.run(coro)
 
 
 async def _fetch_sec_filings_async(
@@ -38,14 +29,29 @@ async def _fetch_sec_filings_async(
     year_end: int,
 ) -> dict:
     """Async implementation of SEC filing fetch."""
-    from app.clients.sec_client import get_sec_client
+    from app.clients.sec_client import get_sec_client, init_sec_client
+    from app.clients.storage_client import StorageClient, init_storage_client
+    from app.config import get_settings
     from app.db.repositories.company_repo import CompanyRepository
     from app.db.repositories.document_repo import DocumentRepository
-    from app.db.session import get_session_factory
+    from app.db.session import build_async_session_factory
     from app.models.document import DocStatus, DocType
 
-    factory = get_session_factory()
-    sec_client = get_sec_client()
+    settings = get_settings()
+    factory = build_async_session_factory(settings)
+
+    # Ensure SEC client is initialised for worker process
+    try:
+        sec_client = get_sec_client()
+    except RuntimeError:
+        sec_client = init_sec_client(settings)
+
+    # Ensure storage client is initialised for worker process
+    try:
+        from app.clients.storage_client import get_storage_client
+        get_storage_client()
+    except RuntimeError:
+        await init_storage_client(settings)
 
     async with factory() as session:
         company_repo = CompanyRepository(session)
@@ -69,6 +75,7 @@ async def _fetch_sec_filings_async(
         created = 0
         skipped = 0
         errors = 0
+        created_doc_ids: list[str] = []
 
         for filing in filings:
             try:
@@ -149,10 +156,7 @@ async def _fetch_sec_filings_async(
                     status=DocStatus.UPLOADED,
                 )
 
-                # Dispatch ingestion task
-                from app.worker.tasks.ingestion_tasks import ingest_document
-
-                ingest_document.delay(str(doc.id))
+                created_doc_ids.append(str(doc.id))
                 created += 1
 
             except Exception as exc:
@@ -166,6 +170,12 @@ async def _fetch_sec_filings_async(
 
         # ── TX: Commit all fetched document records in a single batch ────
         await session.commit()
+
+        # ── Dispatch ingestion tasks AFTER commit so workers can find the rows ──
+        from app.worker.tasks.ingestion_tasks import ingest_document
+
+        for doc_id in created_doc_ids:
+            ingest_document.delay(doc_id)
 
         return {
             "status": "completed",
