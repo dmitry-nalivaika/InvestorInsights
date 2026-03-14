@@ -25,8 +25,9 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, Any
 
+import httpx
 from qdrant_client import AsyncQdrantClient, models
-from qdrant_client.http.exceptions import UnexpectedResponse
+from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
 from app.config import Settings, get_settings
 from app.observability.logging import get_logger
@@ -36,6 +37,18 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 logger = get_logger(__name__)
+
+
+# =====================================================================
+# Exceptions
+# =====================================================================
+
+
+class VectorStoreUnavailableError(Exception):
+    """Raised when the Qdrant vector store is unreachable or timed out."""
+
+    def __init__(self, message: str = "Vector store is unavailable") -> None:
+        super().__init__(message)
 
 
 # =====================================================================
@@ -297,14 +310,31 @@ class VectorStoreClient:
 
         query_filter = models.Filter(must=must_conditions) if must_conditions else None
 
-        results = await self._client.query_points(
-            collection_name=name,
-            query=query_vector,
-            query_filter=query_filter,
-            limit=top_k,
-            score_threshold=score_threshold,
-            with_payload=True,
-        )
+        try:
+            results = await self._client.query_points(
+                collection_name=name,
+                query=query_vector,
+                query_filter=query_filter,
+                limit=top_k,
+                score_threshold=score_threshold,
+                with_payload=True,
+            )
+        except (
+            httpx.ConnectError,
+            httpx.ConnectTimeout,
+            httpx.TimeoutException,
+            ResponseHandlingException,
+            ConnectionError,
+            OSError,
+        ) as exc:
+            logger.error(
+                "Qdrant connection failure during search",
+                error=str(exc),
+                collection=name,
+            )
+            raise VectorStoreUnavailableError(
+                f"Vector store is unavailable: {exc}"
+            ) from exc
 
         return results.points
 

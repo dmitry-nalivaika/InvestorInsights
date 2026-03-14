@@ -16,6 +16,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from app.clients.openai_client import LLMError, LLMUnavailableError, get_openai_client
+from app.clients.qdrant_client import VectorStoreUnavailableError
 from app.config import get_settings
 from app.observability.logging import get_logger
 from app.rag.prompt_builder import (
@@ -46,6 +47,14 @@ _NO_RESULTS_MESSAGE = (
     "3. Additional filings may need to be uploaded\n\n"
     "Please try rephrasing your question or ensure the relevant filings "
     "have been uploaded and processed."
+)
+
+_VECTOR_STORE_UNAVAILABLE_MESSAGE = (
+    "The document search service is temporarily unavailable. "
+    "Your question cannot be answered right now because the vector database "
+    "used for semantic search is unreachable.\n\n"
+    "This is likely a temporary infrastructure issue. Please try again in a few minutes. "
+    "If the problem persists, contact your system administrator."
 )
 
 _OUT_OF_SCOPE_PATTERNS: list[re.Pattern[str]] = [
@@ -172,6 +181,22 @@ class CompanyChatAgent:
             chunks = await self._retrieval.retrieve(
                 question, config=retrieval_config,
             )
+        except VectorStoreUnavailableError as exc:
+            logger.error(
+                "Vector store unavailable",
+                error=str(exc),
+                company_id=str(self._company_id),
+            )
+            yield SourcesEvent(sources=[])
+            yield TokenEvent(token=_VECTOR_STORE_UNAVAILABLE_MESSAGE)
+            yield DoneEvent(
+                full_text=_VECTOR_STORE_UNAVAILABLE_MESSAGE,
+                token_count=count_tokens(_VECTOR_STORE_UNAVAILABLE_MESSAGE),
+                citations=[],
+                model=self._openai.chat_model,
+                error=str(exc),
+            )
+            return
         except Exception as exc:
             logger.error(
                 "Retrieval failed",

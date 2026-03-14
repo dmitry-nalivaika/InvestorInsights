@@ -1,0 +1,209 @@
+# filepath: .github/workflows/ci.yml
+# ============================================================
+# InvestorInsights CI Pipeline
+# Triggers: push to main, PRs to main
+# Jobs: lint → backend tests → frontend tests → build images
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  # ── Backend Lint ─────────────────────────────────────────────
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements-dev.txt
+
+      - name: Ruff check
+        run: ruff check backend/app/ backend/tests/
+
+      - name: Ruff format check
+        run: ruff format --check backend/app/ backend/tests/
+
+  # ── Backend Tests ────────────────────────────────────────────
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    env:
+      API_KEY: test-ci-api-key
+      AZURE_OPENAI_API_KEY: fake-key-for-ci
+      AZURE_OPENAI_ENDPOINT: https://fake.openai.azure.com
+      AZURE_STORAGE_CONNECTION_STRING: ""
+      AZURE_STORAGE_ACCOUNT_NAME: devstoreaccount1
+      APP_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements-dev.txt
+
+      - name: Run unit tests
+        run: python -m pytest backend/tests/unit -v --tb=short
+
+      - name: Run integration tests
+        run: python -m pytest backend/tests/integration -v --tb=short
+
+      - name: Run tests with coverage
+        run: |
+          python -m pytest backend/tests/ \
+            --cov=backend/app \
+            --cov-report=term \
+            --cov-report=xml:coverage.xml \
+            --tb=short
+        continue-on-error: false
+
+      - name: Upload coverage
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: coverage.xml
+
+  # ── Frontend Lint & Test ─────────────────────────────────────
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_LLM_MODEL: gpt-4o-mini
+          NEXT_PUBLIC_EMBEDDING_MODEL: text-embedding-3-large
+          NEXT_PUBLIC_CHUNK_SIZE: "512"
+          NEXT_PUBLIC_CHUNK_OVERLAP: "50"
+          NEXT_PUBLIC_DEFAULT_TOP_K: "15"
+          NEXT_PUBLIC_SCORE_THRESHOLD: "0.65"
+
+  # ── Docker Build ─────────────────────────────────────────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t investorinsights-api:${{ github.sha }} ./backend
+
+      - name: Build frontend image
+        run: docker build -t investorinsights-frontend:${{ github.sha }} ./frontend
+
+  # ── Deploy to Azure (main branch only) ──────────────────────
+  deploy:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ vars.ACR_NAME }}
+
+      - name: Build and push API image
+        run: |
+          docker build -t ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }} ./backend
+          docker build -t ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:latest ./backend
+          docker push ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
+          docker push ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:latest
+
+      - name: Build and push frontend image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ vars.API_URL }} \
+            -t ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }} ./frontend
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ vars.API_URL }} \
+            -t ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:latest ./frontend
+          docker push ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }}
+          docker push ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:latest
+
+      - name: Deploy API Container App
+        run: |
+          az containerapp update --name api \
+            --resource-group rg-investorinsights-dev \
+            --image ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
+
+      - name: Deploy Worker Container App
+        run: |
+          az containerapp update --name worker \
+            --resource-group rg-investorinsights-dev \
+            --image ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
+
+      - name: Deploy Frontend Container App
+        run: |
+          az containerapp update --name frontend \
+            --resource-group rg-investorinsights-dev \
+            --image ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }}
+
+      - name: Run database migrations
+        run: |
+          az containerapp exec --name api \
+            --resource-group rg-investorinsights-dev \
+            --command "alembic upgrade head"
+
+      - name: Verify health
+        run: |
+          API_URL=$(az containerapp show --name api \
+            --resource-group rg-investorinsights-dev \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          sleep 30
+          curl -sf "https://$API_URL/api/v1/health" | jq .

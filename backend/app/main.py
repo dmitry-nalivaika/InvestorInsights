@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
 from app.api.middleware.error_handler import register_error_handlers
+from app.api.middleware.rate_limiter import RateLimitMiddleware
 from app.api.middleware.request_id import RequestIDMiddleware
 from app.api.router import api_router
 from app.config import AppEnvironment, Settings, get_settings
@@ -95,8 +96,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # ── Middleware (registered in reverse order — outermost first) ─
     # Request ID must be outermost so all downstream middleware/handlers see it.
-    # Additional middleware (auth, error handler, logging) added in T012, T013.
+    # Rate limiter sits between request ID and route handlers.
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(RateLimitMiddleware, settings=settings)
 
     # ── Routers ──────────────────────────────────────────────────
     # Health is mounted directly on the app (not through api_router)

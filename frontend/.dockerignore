@@ -1,0 +1,10 @@
+# filepath: frontend/.dockerignore
+node_modules/
+.next/
+.env
+.env.*
+.git
+.gitignore
+tests/
+vitest.config.ts
+README.md
