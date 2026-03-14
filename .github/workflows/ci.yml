@@ -144,6 +144,12 @@ jobs:
     environment:
       name: dev
       url: "https://investorinsights-dev.azurecontainerapps.io"
+    env:
+      # These variables are defined in the GitHub repository/environment settings.
+      # The VS Code GitHub Actions extension may flag them — they resolve at runtime.
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      API_URL: ${{ vars.API_URL }}
+      RESOURCE_GROUP: rg-investorinsights-dev
     steps:
       - uses: actions/checkout@v4
 
@@ -152,54 +158,54 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Login to ACR
-        run: az acr login --name ${{ vars.ACR_NAME }}
+        run: az acr login --name ${{ env.ACR_NAME }}
 
       - name: Build and push API image
         run: |
-          docker build -t ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }} ./backend
-          docker build -t ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:latest ./backend
-          docker push ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
-          docker push ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:latest
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }} ./backend
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/investorinsights-api:latest ./backend
+          docker push ${{ env.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/investorinsights-api:latest
 
       - name: Build and push frontend image
         run: |
           docker build \
-            --build-arg NEXT_PUBLIC_API_URL=${{ vars.API_URL }} \
-            -t ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }} ./frontend
+            --build-arg NEXT_PUBLIC_API_URL=${{ env.API_URL }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }} ./frontend
           docker build \
-            --build-arg NEXT_PUBLIC_API_URL=${{ vars.API_URL }} \
-            -t ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:latest ./frontend
-          docker push ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }}
-          docker push ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:latest
+            --build-arg NEXT_PUBLIC_API_URL=${{ env.API_URL }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/investorinsights-frontend:latest ./frontend
+          docker push ${{ env.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/investorinsights-frontend:latest
 
       - name: Deploy API Container App
         run: |
           az containerapp update --name api \
-            --resource-group rg-investorinsights-dev \
-            --image ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
 
       - name: Deploy Worker Container App
         run: |
           az containerapp update --name worker \
-            --resource-group rg-investorinsights-dev \
-            --image ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/investorinsights-api:${{ github.sha }}
 
       - name: Deploy Frontend Container App
         run: |
           az containerapp update --name frontend \
-            --resource-group rg-investorinsights-dev \
-            --image ${{ vars.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }}
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/investorinsights-frontend:${{ github.sha }}
 
       - name: Run database migrations
         run: |
           az containerapp exec --name api \
-            --resource-group rg-investorinsights-dev \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
             --command "alembic upgrade head"
 
       - name: Verify health
         run: |
-          API_URL=$(az containerapp show --name api \
-            --resource-group rg-investorinsights-dev \
+          API_FQDN=$(az containerapp show --name api \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
             --query properties.configuration.ingress.fqdn -o tsv)
           sleep 30
-          curl -sf "https://$API_URL/api/v1/health" | jq .
+          curl -sf "https://$API_FQDN/api/v1/health" | jq .

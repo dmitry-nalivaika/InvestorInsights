@@ -20,8 +20,11 @@ import os
 import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, patch
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 # Env vars must be set BEFORE any app imports.
 # Use os.environ[] (not setdefault) so these override values set by
@@ -259,7 +262,7 @@ def e2e_client(
     mock_doc_svc: AsyncMock,
     mock_analysis_svc: AsyncMock,
     mock_db_session: AsyncMock,
-) -> TestClient:
+) -> Generator[TestClient, None, None]:
     """TestClient with ALL service dependencies overridden."""
     from app.api.analysis import _get_analysis_service
     from app.api.companies import _get_company_service
@@ -791,7 +794,7 @@ class TestAuthEnforcement:
     """Verify all journey endpoints require authentication."""
 
     @pytest.fixture()
-    def unauth_client(self, app) -> TestClient:
+    def unauth_client(self, app) -> Generator[TestClient, None, None]:
         with TestClient(app, raise_server_exceptions=False) as c:
             yield c
 
