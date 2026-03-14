@@ -20,6 +20,10 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # ── Stage 2: Runtime ─────────────────────────────────────────────
 FROM python:3.12-slim
 
+# Prevent .pyc files and ensure unbuffered stdout/stderr for log flushing
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 # Runtime dependencies for PyMuPDF and asyncpg
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -41,7 +45,7 @@ WORKDIR /app
 COPY . .
 
 # Remove dev files not needed at runtime
-RUN rm -rf tests/ requirements-dev.txt .pytest_cache/ __pycache__/
+RUN rm -rf tests/ requirements-dev.txt .pytest_cache/ __pycache__/ .ruff_cache/ .mypy_cache/
 
 # Switch to non-root user
 USER appuser
