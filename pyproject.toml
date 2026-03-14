@@ -47,6 +47,8 @@ known-first-party = ["app"]
 "backend/app/schemas/*.py" = ["TC003"]
 # API route handlers need uuid at runtime for FastAPI path-param parsing.
 "backend/app/api/*.py" = ["TC003"]
+# Tests run on Python 3.9 where zip(strict=) is unavailable.
+"backend/tests/**/*.py" = ["B905"]
 
 [tool.ruff.format]
 quote-style = "double"
