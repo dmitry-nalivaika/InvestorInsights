@@ -42,6 +42,11 @@ known-first-party = ["app"]
 # strings that SQLAlchemy evaluates via eval(). TC003 wants them in
 # TYPE_CHECKING blocks, which breaks at runtime.
 "backend/app/models/*.py" = ["TC003"]
+# Pydantic schemas also need uuid/datetime at runtime for annotation
+# resolution when `from __future__ import annotations` is used.
+"backend/app/schemas/*.py" = ["TC003"]
+# API route handlers need uuid at runtime for FastAPI path-param parsing.
+"backend/app/api/*.py" = ["TC003"]
 
 [tool.ruff.format]
 quote-style = "double"

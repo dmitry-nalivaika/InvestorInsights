@@ -3,15 +3,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+import uuid
+from datetime import date
+from typing import Any
 
 from pydantic import Field
 
 from app.schemas.common import AppBaseModel
-
-if TYPE_CHECKING:
-    import uuid
-    from datetime import date
 
 # ── Response schemas ─────────────────────────────────────────────
 

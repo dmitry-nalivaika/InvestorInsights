@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import uuid
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
@@ -10,9 +12,6 @@ from pydantic import Field, field_validator
 from app.schemas.common import AppBaseModel, PaginatedResponse
 
 if TYPE_CHECKING:
-    import uuid
-    from datetime import date, datetime
-
     from app.models.document import DocStatus, DocType
 
 # ── Request schemas ──────────────────────────────────────────────

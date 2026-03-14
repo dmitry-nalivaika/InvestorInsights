@@ -11,7 +11,7 @@ Endpoints:
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003 — needed at runtime for FastAPI path param parsing
+import uuid
 
 from fastapi import APIRouter, Depends, Query, Response, status
 

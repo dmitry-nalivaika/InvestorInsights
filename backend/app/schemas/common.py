@@ -3,12 +3,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generic, TypeVar
+import uuid
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
-
-if TYPE_CHECKING:
-    import uuid
 
 T = TypeVar("T")
 
