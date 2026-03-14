@@ -35,7 +35,7 @@ class CompanyUpdate(AppBaseModel):
     name: str | None = Field(None, max_length=255)
     sector: str | None = Field(None, max_length=100)
     industry: str | None = Field(None, max_length=100)
-    description: str | None = None
+    description: str | None = Field(None, max_length=5000)
 
 
 # ── Response schemas ─────────────────────────────────────────────

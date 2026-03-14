@@ -164,6 +164,7 @@ async def _fetch_sec_filings_async(
                     error=str(exc),
                 )
 
+        # ── TX: Commit all fetched document records in a single batch ────
         await session.commit()
 
         return {

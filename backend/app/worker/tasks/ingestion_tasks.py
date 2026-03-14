@@ -113,7 +113,27 @@ async def _try_extract_xbrl_financials(
 
 
 async def _ingest_document_async(document_id: str) -> dict:
-    """Async implementation of document ingestion."""
+    """Async implementation of document ingestion.
+
+    Transaction boundaries
+    ~~~~~~~~~~~~~~~~~~~~~~
+    This function manages its own DB session (not the FastAPI dependency).
+    Three distinct transaction boundaries exist:
+
+    1. **Happy path commit** (line ~142): After ``run_ingestion_pipeline``
+       succeeds, the session is committed so the document moves to READY and
+       all chunks/sections are persisted atomically.
+
+    2. **XBRL commit** (line ~160): If XBRL extraction stores financial
+       periods, a *second* commit persists that data.  This is deliberately
+       separate so that XBRL failures never roll back the primary ingestion.
+
+    3. **Error-path rollback + status update** (lines ~170, ~196): On
+       ``IngestionError`` or unexpected ``Exception`` the main session is
+       rolled back, and a *fresh* session is opened solely to mark the
+       document as ERROR — isolating the error-status write from any dirty
+       state in the original session.
+    """
     from app.config import get_settings
     from app.db.repositories.company_repo import CompanyRepository
     from app.db.repositories.document_repo import DocumentRepository
@@ -139,6 +159,7 @@ async def _ingest_document_async(document_id: str) -> dict:
                 chunk_overlap=settings.chunk_overlap,
             )
 
+            # ── TX-1: Commit text ingestion (doc → READY, chunks, sections) ─
             await session.commit()
 
             # ── T820: Best-effort XBRL financial extraction ──────
@@ -157,6 +178,7 @@ async def _ingest_document_async(document_id: str) -> dict:
             )
 
             if xbrl_result.get("xbrl_periods_stored"):
+                # ── TX-2: Commit XBRL financial data (separate from text) ──
                 await session.commit()
 
             return {
@@ -167,9 +189,11 @@ async def _ingest_document_async(document_id: str) -> dict:
             }
 
         except IngestionError as exc:
+            # ── TX-3a: Rollback dirty session on pipeline failure ────────
             await session.rollback()
 
-            # Mark document as error
+            # Open a fresh session to mark the document as ERROR so the
+            # status write is isolated from the failed transaction.
             async with factory() as err_session:
                 err_repo = DocumentRepository(err_session)
                 doc = await err_repo.get_by_id(document_id)
@@ -193,9 +217,10 @@ async def _ingest_document_async(document_id: str) -> dict:
             }
 
         except Exception as exc:
+            # ── TX-3b: Rollback on unexpected error ──────────────────────
             await session.rollback()
 
-            # Mark document as error
+            # Fresh session for error-status write (same pattern as TX-3a).
             async with factory() as err_session:
                 err_repo = DocumentRepository(err_session)
                 doc = await err_repo.get_by_id(document_id)

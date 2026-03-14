@@ -35,14 +35,35 @@ class DocumentUpload(AppBaseModel):
         return v
 
 
+_VALID_FILING_TYPES = {"10-K", "10-Q", "8-K", "20-F", "DEF14A"}
+"""Allowlist of SEC filing types the platform supports.
+
+Add new types here when support is implemented in the SEC client and
+document pipeline.  The validator on FetchSECRequest enforces this set.
+"""
+
+
 class FetchSECRequest(AppBaseModel):
     """POST /api/v1/companies/{company_id}/documents/fetch-sec."""
 
     filing_types: list[str] = Field(
         default=["10-K", "10-Q"],
+        min_length=1,
+        max_length=10,
         description="Filing types to fetch",
     )
     years_back: int = Field(10, ge=1, le=30)
+
+    @field_validator("filing_types")
+    @classmethod
+    def validate_filing_types(cls, v: list[str]) -> list[str]:
+        invalid = [ft for ft in v if ft not in _VALID_FILING_TYPES]
+        if invalid:
+            raise ValueError(
+                f"Invalid filing type(s): {invalid}. "
+                f"Must be one of: {sorted(_VALID_FILING_TYPES)}"
+            )
+        return v
 
 
 # ── Response schemas ─────────────────────────────────────────────

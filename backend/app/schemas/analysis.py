@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.models.criterion import ComparisonOp, CriteriaCategory
 from app.schemas.common import AppBaseModel, PaginatedResponse
@@ -47,19 +47,40 @@ class CriterionRead(CriterionDef):
 class ProfileCreate(AppBaseModel):
     """POST /api/v1/analysis/profiles."""
 
-    name: str = Field(..., max_length=100)
-    description: str | None = None
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=1000)
     is_default: bool = False
     criteria: list[CriterionDef] = Field(..., min_length=1, max_length=30)
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, v: str) -> str:
+        # Note: AppBaseModel has str_strip_whitespace=True, which strips
+        # before min_length checks.  This validator is a defensive second
+        # layer that catches any edge case the Pydantic config doesn't cover.
+        v = v.strip()
+        if not v:
+            raise ValueError("Profile name must not be blank")
+        return v
 
 
 class ProfileUpdate(AppBaseModel):
     """PUT /api/v1/analysis/profiles/{profile_id}."""
 
-    name: str | None = Field(None, max_length=100)
-    description: str | None = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=1000)
     is_default: bool | None = None
     criteria: list[CriterionDef] | None = Field(None, min_length=1, max_length=30)
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, v: str | None) -> str | None:
+        # See note on ProfileCreate.strip_name above.
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Profile name must not be blank")
+        return v
 
 
 class ProfileRead(AppBaseModel):
@@ -95,6 +116,13 @@ class AnalysisRunRequest(AppBaseModel):
     company_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=10)
     profile_id: uuid.UUID
     generate_summary: bool = True
+
+    @field_validator("company_ids")
+    @classmethod
+    def no_duplicate_company_ids(cls, v: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(v) != len(set(v)):
+            raise ValueError("company_ids must not contain duplicates")
+        return v
 
 
 class CriteriaResultItem(AppBaseModel):
@@ -174,6 +202,13 @@ class ComparisonRequest(AppBaseModel):
     company_ids: list[uuid.UUID] = Field(..., min_length=2, max_length=10)
     profile_id: uuid.UUID
     generate_summary: bool = True
+
+    @field_validator("company_ids")
+    @classmethod
+    def no_duplicate_company_ids(cls, v: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(v) != len(set(v)):
+            raise ValueError("company_ids must not contain duplicates")
+        return v
 
 
 class CompanyCriterionCell(AppBaseModel):

@@ -83,12 +83,17 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    """Yield an async session — use as a FastAPI dependency or async context manager."""
+    """Yield an async session — use as a FastAPI dependency or async context manager.
+
+    Transaction boundary: auto-commits on successful exit, rolls back on
+    exception.  All API endpoint handlers rely on this for their commit
+    semantics — they should *not* call ``session.commit()`` themselves.
+    """
     factory = get_session_factory()
     async with factory() as session:
         try:
             yield session
-            await session.commit()
+            await session.commit()   # TX: auto-commit on success
         except Exception:
-            await session.rollback()
+            await session.rollback()  # TX: auto-rollback on failure
             raise
