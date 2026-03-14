@@ -163,3 +163,66 @@ class FormulaListResponse(AppBaseModel):
     """Response for GET /api/v1/analysis/formulas."""
 
     formulas: list[FormulaInfo]
+
+
+# ── Comparison schemas (T600-T601) ───────────────────────────────
+
+
+class ComparisonRequest(AppBaseModel):
+    """POST /api/v1/analysis/compare."""
+
+    company_ids: list[uuid.UUID] = Field(..., min_length=2, max_length=10)
+    profile_id: uuid.UUID
+    generate_summary: bool = True
+
+
+class CompanyCriterionCell(AppBaseModel):
+    """One cell in the comparison matrix: a single criterion for a single company."""
+
+    criteria_name: str
+    category: str
+    formula: str
+    latest_value: float | None = None
+    threshold: str = ""
+    passed: bool = False
+    has_data: bool = True
+    weighted_score: float = 0.0
+    weight: float = 0.0
+    trend: str | None = None
+    values_by_year: dict[int, float | None] = Field(default_factory=dict)
+
+
+class CompanyComparisonItem(AppBaseModel):
+    """One company's row in the comparison table, ranked by overall score."""
+
+    rank: int
+    company_id: uuid.UUID
+    company_ticker: str | None = None
+    company_name: str | None = None
+    result_id: uuid.UUID
+    overall_score: Decimal
+    max_score: Decimal
+    pct_score: Decimal
+    grade: str
+    passed_count: int = 0
+    failed_count: int = 0
+    criteria_count: int = 0
+    status: str = "scored"  # "scored" | "no_data"
+    criteria_results: list[CompanyCriterionCell] = Field(default_factory=list)
+    summary: str | None = None
+
+
+class ComparisonResponse(AppBaseModel):
+    """Response for POST /api/v1/analysis/compare — ranked comparison table."""
+
+    profile_id: uuid.UUID
+    profile_name: str
+    companies_count: int
+    criteria_names: list[str] = Field(
+        default_factory=list,
+        description="Ordered list of criterion names (column headers for the matrix)",
+    )
+    rankings: list[CompanyComparisonItem] = Field(
+        default_factory=list,
+        description="Companies ranked by overall score descending (no_data companies last)",
+    )

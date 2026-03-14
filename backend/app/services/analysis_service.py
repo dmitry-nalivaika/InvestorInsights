@@ -320,6 +320,66 @@ class AnalysisService:
             offset=offset,
         )
 
+    # ── Multi-company comparison (T600) ─────────────────────────
+
+    async def compare_companies(
+        self,
+        *,
+        company_ids: list[uuid.UUID],
+        profile_id: uuid.UUID,
+        generate_summary: bool = True,
+    ) -> dict[str, Any]:
+        """Run a profile against multiple companies and return ranked comparison.
+
+        Delegates to ``run_analysis`` for execution, then builds a
+        comparison structure ranked by overall score (no-data companies
+        sorted last).
+
+        Returns a dict suitable for building a ``ComparisonResponse``.
+        """
+        results = await self.run_analysis(
+            company_ids=company_ids,
+            profile_id=profile_id,
+            generate_summary=generate_summary,
+        )
+
+        profile = await self._profile_repo.get_by_id(profile_id)
+
+        # Build ordered criteria names from the profile
+        criteria_names = [
+            c.name for c in profile.criteria if c.enabled
+        ]
+
+        # Classify and sort: scored companies by pct_score desc,
+        # then no_data companies last (alphabetically by ticker).
+        scored: list[Any] = []
+        no_data: list[Any] = []
+
+        for r in results:
+            has_any_data = any(
+                d.get("has_data", True) for d in (r.result_details or [])
+            )
+            if r.max_score and float(r.max_score) > 0 and has_any_data:
+                scored.append(r)
+            else:
+                no_data.append(r)
+
+        scored.sort(key=lambda r: float(r.pct_score or 0), reverse=True)
+        no_data.sort(
+            key=lambda r: (r.company.ticker if r.company else ""),
+        )
+
+        ranked = scored + no_data
+
+        return {
+            "profile_id": profile.id,
+            "profile_name": profile.name,
+            "companies_count": len(ranked),
+            "criteria_names": criteria_names,
+            "ranked_results": ranked,
+            "no_data_ids": {r.company_id for r in no_data},
+        }
+
     # ── Default profile seeding (T514) ───────────────────────────
 
     async def seed_default_profile(self) -> AnalysisProfile | None:

@@ -8,12 +8,13 @@ Endpoints:
   PUT    /api/v1/analysis/profiles/{profile_id}  — Update profile
   DELETE /api/v1/analysis/profiles/{profile_id}  — Delete profile
   POST   /api/v1/analysis/run                    — Run analysis
+  POST   /api/v1/analysis/compare                — Compare companies (ranked)
   GET    /api/v1/analysis/results                — List results
   GET    /api/v1/analysis/results/{result_id}    — Result detail
   GET    /api/v1/analysis/results/{result_id}/export — Export result JSON
   GET    /api/v1/analysis/formulas               — List built-in formulas
 
-Tasks: T504, T509, T512, T513, T517
+Tasks: T504, T509, T512, T513, T517, T600, T601
 """
 
 from __future__ import annotations
@@ -33,6 +34,10 @@ from app.schemas.analysis import (
     AnalysisResultRead,
     AnalysisRunRequest,
     AnalysisRunResponse,
+    CompanyCriterionCell,
+    CompanyComparisonItem,
+    ComparisonRequest,
+    ComparisonResponse,
     CriteriaResultItem,
     FormulaInfo,
     FormulaListResponse,
@@ -174,6 +179,26 @@ async def run_analysis(
     return AnalysisRunResponse(
         results=[_result_to_read(r) for r in results],
     )
+
+
+# ── Multi-company comparison (T600-T601) ─────────────────────────
+
+
+@router.post(
+    "/compare",
+    response_model=ComparisonResponse,
+    summary="Compare companies against the same profile (ranked)",
+)
+async def compare_companies(
+    body: ComparisonRequest,
+    svc: AnalysisService = AnalysisServiceDep,
+) -> ComparisonResponse:
+    comparison = await svc.compare_companies(
+        company_ids=body.company_ids,
+        profile_id=body.profile_id,
+        generate_summary=body.generate_summary,
+    )
+    return _build_comparison_response(comparison)
 
 
 # ── Results retrieval (T512) ────────────────────────────────────
@@ -381,4 +406,74 @@ def _result_to_read(result: object) -> AnalysisResultRead:
         criteria_results=criteria_results,
         summary=result.summary,
         created_at=result.created_at,
+    )
+
+
+def _build_comparison_response(comparison: dict) -> ComparisonResponse:
+    """Build a ComparisonResponse from the service's compare_companies output."""
+    from decimal import Decimal
+
+    no_data_ids: set = comparison.get("no_data_ids", set())
+    ranked_results = comparison["ranked_results"]
+
+    rankings: list[CompanyComparisonItem] = []
+    for rank_idx, r in enumerate(ranked_results, start=1):
+        company_ticker = r.company.ticker if r.company else None
+        company_name = r.company.name if r.company else None
+        is_no_data = r.company_id in no_data_ids
+
+        # Build per-criterion cells
+        cells: list[CompanyCriterionCell] = []
+        for detail in (r.result_details or []):
+            values_by_year: dict[int, float | None] = {}
+            for k, v in (detail.get("values_by_year") or {}).items():
+                try:
+                    values_by_year[int(k)] = v
+                except (ValueError, TypeError):
+                    pass
+
+            cells.append(
+                CompanyCriterionCell(
+                    criteria_name=detail.get("criteria_name", ""),
+                    category=detail.get("category", ""),
+                    formula=detail.get("formula", ""),
+                    latest_value=detail.get("latest_value"),
+                    threshold=detail.get("threshold", ""),
+                    passed=detail.get("passed", False),
+                    has_data=detail.get("has_data", True),
+                    weighted_score=detail.get("weighted_score", 0.0),
+                    weight=detail.get("weight", 0.0),
+                    trend=detail.get("trend"),
+                    values_by_year=values_by_year,
+                ),
+            )
+
+        pct = float(r.pct_score) if r.pct_score else 0.0
+
+        rankings.append(
+            CompanyComparisonItem(
+                rank=rank_idx,
+                company_id=r.company_id,
+                company_ticker=company_ticker,
+                company_name=company_name,
+                result_id=r.id,
+                overall_score=r.overall_score or Decimal("0"),
+                max_score=r.max_score or Decimal("0"),
+                pct_score=r.pct_score or Decimal("0"),
+                grade=compute_grade(pct),
+                passed_count=r.passed_count or 0,
+                failed_count=r.failed_count or 0,
+                criteria_count=r.criteria_count or 0,
+                status="no_data" if is_no_data else "scored",
+                criteria_results=cells,
+                summary=r.summary,
+            ),
+        )
+
+    return ComparisonResponse(
+        profile_id=comparison["profile_id"],
+        profile_name=comparison["profile_name"],
+        companies_count=comparison["companies_count"],
+        criteria_names=comparison["criteria_names"],
+        rankings=rankings,
     )
