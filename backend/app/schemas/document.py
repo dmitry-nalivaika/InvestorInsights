@@ -5,14 +5,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import Field, field_validator
 
+from app.models.document import DocStatus, DocType  # noqa: TC001 - needed at runtime by Pydantic
 from app.schemas.common import AppBaseModel, PaginatedResponse
-
-if TYPE_CHECKING:
-    from app.models.document import DocStatus, DocType
 
 # ── Request schemas ──────────────────────────────────────────────
 
@@ -111,3 +109,10 @@ class FetchSECResponse(AppBaseModel):
     task_id: uuid.UUID
     message: str = "Fetching filings from SEC EDGAR"
     estimated_filings: int = 0
+
+
+# Rebuild models to resolve forward references (required with
+# ``from __future__ import annotations`` + Pydantic v2).
+DocumentUpload.model_rebuild()
+DocumentRead.model_rebuild()
+DocumentDetail.model_rebuild()
