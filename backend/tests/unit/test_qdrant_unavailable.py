@@ -27,14 +27,13 @@ from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedR
 
 from app.clients.qdrant_client import VectorStoreClient, VectorStoreUnavailableError
 from app.rag.chat_agent import (
+    _NO_RESULTS_MESSAGE,
+    _VECTOR_STORE_UNAVAILABLE_MESSAGE,
     CompanyChatAgent,
     DoneEvent,
     SourcesEvent,
     TokenEvent,
-    _NO_RESULTS_MESSAGE,
-    _VECTOR_STORE_UNAVAILABLE_MESSAGE,
 )
-
 
 # =====================================================================
 # Helpers

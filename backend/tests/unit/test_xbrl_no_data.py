@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 # Set env vars BEFORE any app imports
 os.environ.setdefault("API_KEY", "test-key")
@@ -93,10 +93,10 @@ class TestTryExtractXBRLNoData:
 
         with patch(
             _PATCH_FINANCIAL_SERVICE
-        ) as MockFinSvc:
+        ) as mock_fin_svc:
             mock_svc_instance = AsyncMock()
             mock_svc_instance.extract_and_store_financials = AsyncMock(return_value=0)
-            MockFinSvc.return_value = mock_svc_instance
+            mock_fin_svc.return_value = mock_svc_instance
 
             result = await _try_extract_xbrl_financials(
                 document_id=DOCUMENT_ID,
@@ -118,10 +118,10 @@ class TestTryExtractXBRLNoData:
 
         with patch(
             _PATCH_FINANCIAL_SERVICE
-        ) as MockFinSvc:
+        ) as mock_fin_svc:
             mock_svc_instance = AsyncMock()
             mock_svc_instance.extract_and_store_financials = AsyncMock(return_value=0)
-            MockFinSvc.return_value = mock_svc_instance
+            mock_fin_svc.return_value = mock_svc_instance
 
             # Should not raise
             result = await _try_extract_xbrl_financials(
@@ -149,12 +149,12 @@ class TestTryExtractXBRLFailure:
 
         with patch(
             _PATCH_FINANCIAL_SERVICE
-        ) as MockFinSvc:
+        ) as mock_fin_svc:
             mock_svc_instance = AsyncMock()
             mock_svc_instance.extract_and_store_financials = AsyncMock(
                 side_effect=ConnectionError("SEC EDGAR unreachable"),
             )
-            MockFinSvc.return_value = mock_svc_instance
+            mock_fin_svc.return_value = mock_svc_instance
 
             result = await _try_extract_xbrl_financials(
                 document_id=DOCUMENT_ID,
@@ -176,12 +176,12 @@ class TestTryExtractXBRLFailure:
 
         with patch(
             _PATCH_FINANCIAL_SERVICE
-        ) as MockFinSvc:
+        ) as mock_fin_svc:
             mock_svc_instance = AsyncMock()
             mock_svc_instance.extract_and_store_financials = AsyncMock(
                 side_effect=RuntimeError("Something unexpected"),
             )
-            MockFinSvc.return_value = mock_svc_instance
+            mock_fin_svc.return_value = mock_svc_instance
 
             result = await _try_extract_xbrl_financials(
                 document_id=DOCUMENT_ID,
@@ -202,12 +202,12 @@ class TestTryExtractXBRLFailure:
 
         with patch(
             _PATCH_FINANCIAL_SERVICE
-        ) as MockFinSvc:
+        ) as mock_fin_svc:
             mock_svc_instance = AsyncMock()
             mock_svc_instance.extract_and_store_financials = AsyncMock(
                 side_effect=Exception("UNIQUE constraint violation"),
             )
-            MockFinSvc.return_value = mock_svc_instance
+            mock_fin_svc.return_value = mock_svc_instance
 
             result = await _try_extract_xbrl_financials(
                 document_id=DOCUMENT_ID,
@@ -237,10 +237,10 @@ class TestTryExtractXBRLSuccess:
 
         with patch(
             _PATCH_FINANCIAL_SERVICE
-        ) as MockFinSvc:
+        ) as mock_fin_svc:
             mock_svc_instance = AsyncMock()
             mock_svc_instance.extract_and_store_financials = AsyncMock(return_value=3)
-            MockFinSvc.return_value = mock_svc_instance
+            mock_fin_svc.return_value = mock_svc_instance
 
             result = await _try_extract_xbrl_financials(
                 document_id=DOCUMENT_ID,
@@ -263,10 +263,10 @@ class TestTryExtractXBRLSuccess:
 
         with patch(
             _PATCH_FINANCIAL_SERVICE
-        ) as MockFinSvc:
+        ) as mock_fin_svc:
             mock_svc_instance = AsyncMock()
             mock_svc_instance.extract_and_store_financials = AsyncMock(return_value=1)
-            MockFinSvc.return_value = mock_svc_instance
+            mock_fin_svc.return_value = mock_svc_instance
 
             await _try_extract_xbrl_financials(
                 document_id=doc_id,

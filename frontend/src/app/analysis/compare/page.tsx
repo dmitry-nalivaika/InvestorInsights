@@ -6,9 +6,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   GitCompareArrows,
   Play,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   Check,
   X,
 } from "lucide-react";
@@ -17,7 +14,6 @@ import {
   companiesApi,
   type ComparisonResponse,
   type ComparisonRanking,
-  type Company,
 } from "@/lib/api-client";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";

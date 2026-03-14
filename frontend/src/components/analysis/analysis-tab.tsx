@@ -4,18 +4,16 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { BarChart3, Play, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { analysisApi, type AnalysisResult, type AnalysisProfile } from "@/lib/api-client";
+import { analysisApi, type AnalysisResult } from "@/lib/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { ErrorBanner } from "@/components/ui/error-banner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatPercent, gradeBgColor, formatDate } from "@/lib/format";
 
 export function AnalysisTab({
   companyId,
-  companyTicker,
 }: {
   companyId: string;
   companyTicker: string;

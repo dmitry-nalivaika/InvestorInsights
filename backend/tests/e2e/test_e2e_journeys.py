@@ -39,10 +39,8 @@ from app.api.middleware.error_handler import ConflictError, NotFoundError
 from app.models.criterion import ComparisonOp, CriteriaCategory
 from app.models.document import DocStatus, DocType
 from app.services.analysis_service import AnalysisService
-from app.services.chat_service import ChatService
 from app.services.company_service import CompanyService
 from app.services.document_service import DocumentService
-
 
 # =====================================================================
 # Constants & helpers
@@ -68,8 +66,8 @@ def _mock_company(**overrides: Any) -> MagicMock:
     obj.cik = overrides.get("cik", "0000320193")
     obj.sector = overrides.get("sector", "Technology")
     obj.industry = overrides.get("industry", "Consumer Electronics")
-    obj.description = overrides.get("description", None)
-    obj.metadata_ = overrides.get("metadata_", None)
+    obj.description = overrides.get("description")
+    obj.metadata_ = overrides.get("metadata_")
     obj.created_at = overrides.get("created_at", _NOW)
     obj.updated_at = overrides.get("updated_at", _NOW)
     return obj
@@ -91,18 +89,18 @@ def _mock_document(**overrides: Any) -> MagicMock:
     obj.company_id = overrides.get("company_id", _COMPANY_ID)
     obj.doc_type = overrides.get("doc_type", DocType.TEN_K)
     obj.fiscal_year = overrides.get("fiscal_year", 2023)
-    obj.fiscal_quarter = overrides.get("fiscal_quarter", None)
+    obj.fiscal_quarter = overrides.get("fiscal_quarter")
     obj.filing_date = overrides.get("filing_date", date(2024, 2, 2))
     obj.period_end_date = overrides.get("period_end_date", date(2023, 12, 31))
     obj.sec_accession = overrides.get("sec_accession", "0000320193-24-000010")
-    obj.source_url = overrides.get("source_url", None)
+    obj.source_url = overrides.get("source_url")
     obj.storage_key = overrides.get("storage_key", f"companies/{_COMPANY_ID}/10-K/2023/filing.pdf")
     obj.file_size_bytes = overrides.get("file_size_bytes", 1_500_000)
     obj.page_count = overrides.get("page_count", 120)
     obj.status = overrides.get("status", DocStatus.UPLOADED)
-    obj.error_message = overrides.get("error_message", None)
-    obj.processing_started_at = overrides.get("processing_started_at", None)
-    obj.processing_completed_at = overrides.get("processing_completed_at", None)
+    obj.error_message = overrides.get("error_message")
+    obj.processing_started_at = overrides.get("processing_started_at")
+    obj.processing_completed_at = overrides.get("processing_completed_at")
     obj.created_at = overrides.get("created_at", _NOW)
     obj.updated_at = overrides.get("updated_at", _NOW)
     return obj
@@ -138,13 +136,13 @@ def _mock_criterion(**overrides: Any) -> MagicMock:
     obj.profile_id = overrides.get("profile_id", _PROFILE_ID)
     obj.name = overrides.get("name", "Gross Margin > 40%")
     obj.category = overrides.get("category", CriteriaCategory.PROFITABILITY)
-    obj.description = overrides.get("description", None)
+    obj.description = overrides.get("description")
     obj.formula = overrides.get("formula", "gross_margin")
     obj.is_custom_formula = overrides.get("is_custom_formula", False)
     obj.comparison = overrides.get("comparison", ComparisonOp.GTE)
     obj.threshold_value = overrides.get("threshold_value", Decimal("0.40"))
-    obj.threshold_low = overrides.get("threshold_low", None)
-    obj.threshold_high = overrides.get("threshold_high", None)
+    obj.threshold_low = overrides.get("threshold_low")
+    obj.threshold_high = overrides.get("threshold_high")
     obj.weight = overrides.get("weight", Decimal("2.0"))
     obj.lookback_years = overrides.get("lookback_years", 5)
     obj.enabled = overrides.get("enabled", True)
@@ -311,7 +309,7 @@ class TestCompanyJourney:
         assert body["ticker"] == "AAPL"
         assert body["name"] == "Apple Inc."
         assert body["cik"] == "0000320193"
-        company_id = body["id"]
+        assert body["id"]  # verify ID is present
 
         # Step 2: List companies — should contain the new company
         mock_company_svc.list_companies.return_value = (
@@ -438,10 +436,10 @@ class TestUploadChatJourney:
         # so we must patch at the source module.
         with patch(
             "app.db.repositories.company_repo.CompanyRepository"
-        ) as MockCompanyRepo:
+        ) as mock_company_repo:
             repo_inst = AsyncMock()
             repo_inst.get_by_id.return_value = _mock_company()
-            MockCompanyRepo.return_value = repo_inst
+            mock_company_repo.return_value = repo_inst
 
             # Patch Celery dispatch to avoid broker connection
             with patch(
@@ -497,21 +495,21 @@ class TestUploadChatJourney:
         mock_session = _mock_session()
 
         with (
-            patch("app.api.chat.CompanyRepository") as MockCompRepo,
-            patch("app.api.chat.DocumentRepository") as MockDocRepo,
-            patch("app.api.chat.ChatService") as MockChatSvcCls,
-            patch("app.api.chat.CompanyChatAgent") as MockAgentCls,
+            patch("app.api.chat.CompanyRepository") as mock_comp_repo,
+            patch("app.api.chat.DocumentRepository") as mock_doc_repo,
+            patch("app.api.chat.ChatService") as mock_chat_svc_cls,
+            patch("app.api.chat.CompanyChatAgent") as mock_agent_cls,
         ):
             # Company exists
             comp_repo = AsyncMock()
             comp_repo.get_by_id.return_value = _mock_company()
-            MockCompRepo.return_value = comp_repo
+            mock_comp_repo.return_value = comp_repo
 
             # One READY document
             doc_repo = AsyncMock()
             ready_doc = _mock_document(status=DocStatus.READY)
             doc_repo.list_by_company.return_value = ([ready_doc], 1)
-            MockDocRepo.return_value = doc_repo
+            mock_doc_repo.return_value = doc_repo
 
             # Chat service: create session, add message, get history
             chat_svc = AsyncMock()
@@ -528,7 +526,7 @@ class TestUploadChatJourney:
             mock_assistant_msg = MagicMock()
             mock_assistant_msg.id = uuid.uuid4()
             chat_svc.add_assistant_message.return_value = mock_assistant_msg
-            MockChatSvcCls.return_value = chat_svc
+            mock_chat_svc_cls.return_value = chat_svc
 
             # Chat agent streams events
             from app.rag.chat_agent import DoneEvent, SourcesEvent, TokenEvent
@@ -546,7 +544,7 @@ class TestUploadChatJourney:
 
             agent_inst = MagicMock()
             agent_inst.generate_response = _fake_generate
-            MockAgentCls.return_value = agent_inst
+            mock_agent_cls.return_value = agent_inst
 
             resp = e2e_client.post(
                 f"/api/v1/companies/{_COMPANY_ID}/chat",

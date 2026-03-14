@@ -15,7 +15,6 @@ from __future__ import annotations
 import os
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 
@@ -27,8 +26,7 @@ os.environ.setdefault("AZURE_STORAGE_CONNECTION_STRING", "")
 os.environ.setdefault("AZURE_STORAGE_ACCOUNT_NAME", "devstoreaccount1")
 
 from app.api.middleware.rate_limiter import RateLimitMiddleware
-from app.config import Settings, get_settings
-
+from app.config import get_settings
 
 # ── Helpers ──────────────────────────────────────────────────────
 
@@ -57,8 +55,8 @@ def _create_test_app(crud_limit: int = 5, chat_limit: int = 2) -> FastAPI:
     async def list_companies():
         return {"items": []}
 
-    @router.post("/companies/{id}/chat")
-    async def chat(id: str):
+    @router.post("/companies/{company_id}/chat")
+    async def chat(company_id: str):
         return {"message": "ok"}
 
     app.include_router(router)

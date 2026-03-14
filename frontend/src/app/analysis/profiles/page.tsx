@@ -2,7 +2,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, Plus, Trash2, Edit, Star } from "lucide-react";
+import { ClipboardList, Trash2, Star } from "lucide-react";
 import { analysisApi, type AnalysisProfile } from "@/lib/api-client";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

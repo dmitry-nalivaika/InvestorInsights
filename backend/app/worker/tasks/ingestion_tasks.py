@@ -47,8 +47,9 @@ async def _try_extract_xbrl_financials(
     Returns:
         Dict with keys: ``xbrl_attempted``, ``xbrl_periods_stored``, ``xbrl_warning``.
     """
-    from app.services.financial_service import FinancialService
     import uuid as _uuid
+
+    from app.services.financial_service import FinancialService
 
     if not cik:
         logger.info(

@@ -1,9 +1,9 @@
 # filepath: backend/app/analysis/scorer.py
-"""Analysis scoring — binary pass/fail × weight with grade assignment.
+"""Analysis scoring — binary pass/fail x weight with grade assignment.
 
 Scoring rules (from plan.md):
   - Each criterion is evaluated as pass (1) or fail (0).
-  - Score contribution = pass × weight.
+  - Score contribution = pass x weight.
   - ``no_data`` criteria are excluded from max possible score.
   - Grade thresholds:
       A: 90-100%, B: 75-89%, C: 60-74%, D: 40-59%, F: 0-39%
@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
 
 
 @dataclass

@@ -9,7 +9,10 @@ from decimal import Decimal
 
 from pydantic import Field, field_validator
 
-from app.models.criterion import ComparisonOp, CriteriaCategory
+from app.models.criterion import (  # noqa: TC001 - runtime dep for Pydantic
+    ComparisonOp,
+    CriteriaCategory,
+)
 from app.schemas.common import AppBaseModel, PaginatedResponse
 
 # ── Criteria schemas ─────────────────────────────────────────────

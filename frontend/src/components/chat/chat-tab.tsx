@@ -3,9 +3,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Send, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { Send, MessageSquare, Plus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { chatApi, type ChatMessage, type ChatSession } from "@/lib/api-client";
+import { chatApi, type ChatMessage } from "@/lib/api-client";
 import { streamChat, type ChatSourceEvent } from "@/lib/sse-client";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";

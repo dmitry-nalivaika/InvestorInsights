@@ -1,7 +1,7 @@
 // filepath: frontend/src/app/settings/page.tsx
 "use client";
 
-import { Settings, Brain, Database, Cpu, Key, Hash, Layers } from "lucide-react";
+import { Brain, Database, Cpu, Key, Layers } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

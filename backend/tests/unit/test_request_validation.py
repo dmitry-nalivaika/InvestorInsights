@@ -23,13 +23,11 @@ from pydantic import ValidationError
 from app.schemas.analysis import (
     AnalysisRunRequest,
     ComparisonRequest,
-    CriterionDef,
     ProfileCreate,
     ProfileUpdate,
 )
 from app.schemas.company import CompanyUpdate
 from app.schemas.document import FetchSECRequest
-
 
 # ── Helpers ──────────────────────────────────────────────────────
 

@@ -28,7 +28,6 @@ T802: Performance testing — ingestion, API p95, chat TTFT, analysis benchmarks
 
 from __future__ import annotations
 
-import json
 import os
 import random
 import string
@@ -36,7 +35,6 @@ import time
 import uuid
 
 from locust import HttpUser, between, events, tag, task
-
 
 # ── Configuration ────────────────────────────────────────────────
 

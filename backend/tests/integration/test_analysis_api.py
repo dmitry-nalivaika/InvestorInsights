@@ -37,7 +37,7 @@ os.environ.setdefault("AZURE_STORAGE_ACCOUNT_NAME", "devstoreaccount1")
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.middleware.error_handler import ConflictError, NotFoundError, ValidationError
+from app.api.middleware.error_handler import ConflictError, NotFoundError
 from app.services.analysis_service import AnalysisService
 
 # =====================================================================
@@ -73,13 +73,13 @@ def _make_criterion(**overrides: Any) -> MagicMock:
     obj.profile_id = overrides.get("profile_id", _PROFILE_ID)
     obj.name = overrides.get("name", "Gross Margin > 40%")
     obj.category = overrides.get("category", CriteriaCategory.PROFITABILITY)
-    obj.description = overrides.get("description", None)
+    obj.description = overrides.get("description")
     obj.formula = overrides.get("formula", "gross_margin")
     obj.is_custom_formula = overrides.get("is_custom_formula", False)
     obj.comparison = overrides.get("comparison", ComparisonOp.GTE)
     obj.threshold_value = overrides.get("threshold_value", Decimal("0.40"))
-    obj.threshold_low = overrides.get("threshold_low", None)
-    obj.threshold_high = overrides.get("threshold_high", None)
+    obj.threshold_low = overrides.get("threshold_low")
+    obj.threshold_high = overrides.get("threshold_high")
     obj.weight = overrides.get("weight", Decimal("2.0"))
     obj.lookback_years = overrides.get("lookback_years", 5)
     obj.enabled = overrides.get("enabled", True)

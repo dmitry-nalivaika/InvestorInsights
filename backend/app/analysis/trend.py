@@ -20,7 +20,6 @@ Task: T507
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass(frozen=True)
@@ -68,7 +67,7 @@ def detect_trend(values_by_year: dict[int, float | None]) -> TrendResult:
     mean_x = sum(years) / n
     mean_y = sum(values) / n
 
-    numerator = sum((x - mean_x) * (y - mean_y) for x, y in zip(years, values))
+    numerator = sum((x - mean_x) * (y - mean_y) for x, y in zip(years, values))  # noqa: B905
     denominator = sum((x - mean_x) ** 2 for x in years)
 
     if denominator == 0:
@@ -84,16 +83,13 @@ def detect_trend(values_by_year: dict[int, float | None]) -> TrendResult:
     intercept = mean_y - slope * mean_x
 
     # R² calculation
-    ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(years, values))
+    ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(years, values))  # noqa: B905
     ss_tot = sum((y - mean_y) ** 2 for y in values)
     r_squared = 1.0 - (ss_res / ss_tot) if ss_tot != 0 else None
 
     # Normalised slope = OLS slope / abs(mean_y)
     abs_mean = abs(mean_y)
-    if abs_mean == 0:
-        normalised = 0.0
-    else:
-        normalised = slope / abs_mean
+    normalised = 0.0 if abs_mean == 0 else slope / abs_mean
 
     # Classify
     if normalised > _TREND_THRESHOLD:

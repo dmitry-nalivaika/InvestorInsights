@@ -7,28 +7,30 @@ Covers:
   - T502: prev() reference resolution
   - T503: Formula validation (syntax, balanced parens, field refs)
   - T507: Trend detection (OLS regression)
-  - T508: Scoring (pass/fail × weight, grades, no_data handling)
+  - T508: Scoring (pass/fail x weight, grades, no_data handling)
   - T506: Engine integration (run_criterion, run_analysis)
 """
 
 from __future__ import annotations
 
 import os
-import uuid
 from decimal import Decimal
 
 os.environ.setdefault("API_KEY", "test-analysis-unit")
 
 import pytest
 
+from app.analysis.engine import (
+    build_data_by_year,
+    run_analysis,
+    run_criterion,
+)
 from app.analysis.expression_parser import (
-    EvalError,
     FormulaContext,
     LexError,
     ParseError,
     collect_field_refs,
     compute_formula,
-    evaluate,
     parse_expression,
     tokenize,
     validate_expression,
@@ -40,20 +42,13 @@ from app.analysis.formulas import (
     resolve_expression,
 )
 from app.analysis.scorer import (
-    AnalysisScore,
     CriterionScore,
     compute_analysis_score,
     compute_grade,
     evaluate_threshold,
     format_threshold,
 )
-from app.analysis.trend import TrendResult, detect_trend
-from app.analysis.engine import (
-    build_data_by_year,
-    run_analysis,
-    run_criterion,
-)
-
+from app.analysis.trend import detect_trend
 
 # =====================================================================
 # Test data helpers
@@ -582,23 +577,23 @@ class TestTrendDetection:
 class TestScorer:
     """Scoring tests."""
 
-    def test_grade_A(self):
+    def test_grade_a(self):
         assert compute_grade(95.0) == "A"
         assert compute_grade(90.0) == "A"
 
-    def test_grade_B(self):
+    def test_grade_b(self):
         assert compute_grade(85.0) == "B"
         assert compute_grade(75.0) == "B"
 
-    def test_grade_C(self):
+    def test_grade_c(self):
         assert compute_grade(70.0) == "C"
         assert compute_grade(60.0) == "C"
 
-    def test_grade_D(self):
+    def test_grade_d(self):
         assert compute_grade(50.0) == "D"
         assert compute_grade(40.0) == "D"
 
-    def test_grade_F(self):
+    def test_grade_f(self):
         assert compute_grade(30.0) == "F"
         assert compute_grade(0.0) == "F"
 

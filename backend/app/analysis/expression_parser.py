@@ -28,7 +28,6 @@ Tasks: T501 (parser), T502 (prev() resolution), T503 (validation)
 from __future__ import annotations
 
 import enum
-import math
 import re
 from dataclasses import dataclass
 from typing import Any

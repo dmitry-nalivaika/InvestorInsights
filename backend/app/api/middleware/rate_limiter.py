@@ -21,10 +21,8 @@ Rate-limit headers on every response:
 
 from __future__ import annotations
 
-import time
 from typing import TYPE_CHECKING
 
-import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import JSONResponse
 
@@ -32,8 +30,8 @@ if TYPE_CHECKING:
     from starlette.requests import Request
     from starlette.responses import Response
 
-from app.config import Settings, get_settings
 from app.clients.redis_client import get_redis_client
+from app.config import Settings, get_settings
 from app.observability.logging import get_logger
 
 logger = get_logger(__name__)
@@ -41,7 +39,7 @@ logger = get_logger(__name__)
 _WINDOW_SECONDS = 60
 
 
-def _client_ip(request: "Request") -> str:
+def _client_ip(request: Request) -> str:
     """Extract client IP from forwarded headers or direct connection."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
@@ -59,13 +57,13 @@ def _is_chat_endpoint(path: str) -> bool:
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Sliding-window rate limiter backed by Redis."""
 
-    def __init__(self, app: "Request", settings: Settings | None = None) -> None:
+    def __init__(self, app: Request, settings: Settings | None = None) -> None:
         super().__init__(app)
         self._settings = settings or get_settings()
 
     async def dispatch(
-        self, request: "Request", call_next: RequestResponseEndpoint
-    ) -> "Response":
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
         # Only rate-limit API endpoints
         path = request.url.path
         if not path.startswith("/api/v1") or path.endswith("/health"):

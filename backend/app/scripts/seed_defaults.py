@@ -46,7 +46,7 @@ async def _seed() -> None:
                     len(profile.criteria),
                 )
             else:
-                logger.info("ℹ️  Default profile already exists — skipped")
+                logger.info("Default profile already exists — skipped")
     finally:
         await engine.dispose()
 

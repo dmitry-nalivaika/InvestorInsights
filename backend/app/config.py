@@ -49,9 +49,9 @@ class Settings(BaseSettings):
     db_password: str = "analyst_password"
     database_url: Optional[str] = None
     # Pool sizing — per-worker connection budget.
-    # Total connections = api_workers × (db_pool_size + db_max_overflow).
+    # Total connections = api_workers x (db_pool_size + db_max_overflow).
     #   Dev  (1 worker):  5 + 5  = 10  (local PostgreSQL, plenty of headroom)
-    #   Prod (4 workers):  5 + 10 = 15 × 4 = 60 (Azure Flex GP_Gen5_2: 100 limit)
+    #   Prod (4 workers):  5 + 10 = 15 x 4 = 60 (Azure Flex GP_Gen5_2: 100 limit)
     # Azure B2s (50 conn) → keep pool_size ≤ 5, overflow ≤ 5 per worker.
     db_pool_size: int = Field(default=5, ge=1, le=100)
     db_max_overflow: int = Field(default=10, ge=0, le=100)

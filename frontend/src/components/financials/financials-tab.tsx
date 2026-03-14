@@ -40,7 +40,6 @@ function formatMetricValue(value: number | null | undefined, fmt: string): strin
 
 export function FinancialsTab({
   companyId,
-  companyTicker,
 }: {
   companyId: string;
   companyTicker: string;

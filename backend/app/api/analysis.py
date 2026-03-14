@@ -19,23 +19,23 @@ Tasks: T504, T509, T512, T513, T517, T600, T601
 
 from __future__ import annotations
 
+import contextlib
 import uuid
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import JSONResponse
 
 from app.analysis.formulas import ALL_BUILTIN_FORMULAS
 from app.analysis.scorer import compute_grade
-from app.dependencies import DbSessionDep
+from app.dependencies import DbSessionDep  # noqa: TC001 - runtime dep for FastAPI DI
 from app.observability.logging import get_logger
 from app.schemas.analysis import (
     AnalysisResultList,
     AnalysisResultRead,
     AnalysisRunRequest,
     AnalysisRunResponse,
-    CompanyCriterionCell,
     CompanyComparisonItem,
+    CompanyCriterionCell,
     ComparisonRequest,
     ComparisonResponse,
     CriteriaResultItem,
@@ -59,11 +59,10 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 def _get_analysis_service(session: DbSessionDep) -> AnalysisService:
     """Build a request-scoped AnalysisService."""
-    try:
+    openai_client = None
+    with contextlib.suppress(Exception):
         from app.clients.openai_client import get_openai_client
         openai_client = get_openai_client()
-    except Exception:
-        openai_client = None
     return AnalysisService(session, openai_client=openai_client)
 
 
@@ -365,10 +364,8 @@ def _result_to_read(result: object) -> AnalysisResultRead:
         # Convert string year keys back to int
         values_by_year: dict[int, float | None] = {}
         for k, v in (detail.get("values_by_year") or {}).items():
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 values_by_year[int(k)] = v
-            except (ValueError, TypeError):
-                pass
 
         criteria_results.append(
             CriteriaResultItem(
@@ -427,10 +424,8 @@ def _build_comparison_response(comparison: dict) -> ComparisonResponse:
         for detail in (r.result_details or []):
             values_by_year: dict[int, float | None] = {}
             for k, v in (detail.get("values_by_year") or {}).items():
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     values_by_year[int(k)] = v
-                except (ValueError, TypeError):
-                    pass
 
             cells.append(
                 CompanyCriterionCell(

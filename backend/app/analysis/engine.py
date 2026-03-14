@@ -18,7 +18,6 @@ from typing import Any
 
 from app.analysis.expression_parser import (
     FormulaContext,
-    compute_formula,
     parse_expression,
 )
 from app.analysis.formulas import resolve_expression
@@ -66,10 +65,9 @@ def build_data_by_year(
             result[year] = {}
 
         for stmt_type in ("income_statement", "balance_sheet", "cash_flow"):
-            if stmt_type in data:
-                # Don't overwrite if already present (annual takes precedence)
-                if stmt_type not in result[year]:
-                    result[year][stmt_type] = data[stmt_type]
+            # Don't overwrite if already present (annual takes precedence)
+            if stmt_type in data and stmt_type not in result[year]:
+                result[year][stmt_type] = data[stmt_type]
 
     return result
 

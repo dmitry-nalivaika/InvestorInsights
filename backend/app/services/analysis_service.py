@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from app.analysis.engine import build_data_by_year, run_analysis
 from app.analysis.expression_parser import validate_expression
-from app.analysis.formulas import FORMULA_REGISTRY, resolve_expression
-from app.analysis.scorer import compute_grade
+from app.analysis.formulas import FORMULA_REGISTRY
 from app.api.middleware.error_handler import ConflictError, NotFoundError, ValidationError
 from app.db.repositories.financial_repo import FinancialRepository
 from app.db.repositories.profile_repo import ProfileRepository
@@ -392,7 +391,7 @@ class AnalysisService:
             logger.info("Default profile already exists, skipping seed")
             return None
 
-        from app.models.criterion import CriteriaCategory, ComparisonOp
+        from app.models.criterion import ComparisonOp, CriteriaCategory
 
         criteria = [
             # Profitability (5)
@@ -474,6 +473,7 @@ class AnalysisService:
     async def _unset_defaults(self) -> None:
         """Unset is_default on all profiles."""
         from sqlalchemy import update
+
         from app.models.profile import AnalysisProfile
 
         stmt = (
@@ -526,11 +526,11 @@ class AnalysisService:
         )
 
         if strengths:
-            prompt += f"Strengths:\n" + "\n".join(f"  ✓ {s}" for s in strengths) + "\n\n"
+            prompt += "Strengths:\n" + "\n".join(f"  ✓ {s}" for s in strengths) + "\n\n"
         if concerns:
-            prompt += f"Concerns:\n" + "\n".join(f"  ✗ {c}" for c in concerns) + "\n\n"
+            prompt += "Concerns:\n" + "\n".join(f"  ✗ {c}" for c in concerns) + "\n\n"
         if data_gaps:
-            prompt += f"Data gaps (not evaluated):\n" + "\n".join(f"  ? {d}" for d in data_gaps) + "\n\n"
+            prompt += "Data gaps (not evaluated):\n" + "\n".join(f"  ? {d}" for d in data_gaps) + "\n\n"
 
         prompt += (
             "Write a professional summary covering strengths, concerns, and any data gaps. "
