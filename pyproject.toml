@@ -30,6 +30,7 @@ ignore = [
     "UP042",  # suggests StrEnum (Python 3.11+, unavailable on 3.9 runtime)
     "UP045",  # suggests X | None (breaks Pydantic BaseSettings without future annotations)
     "UP046",  # suggests PEP 695 type params (Python 3.12+)
+    "UP017",  # suggests datetime.UTC alias (Python 3.11+, unavailable on 3.9 runtime)
 ]
 
 [tool.ruff.lint.isort]

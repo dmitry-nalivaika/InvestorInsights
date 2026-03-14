@@ -9,7 +9,7 @@ and shared across requests via FastAPI dependency injection.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from azure.storage.blob import (
@@ -292,7 +292,7 @@ class StorageClient:
             blob_name=key,
             account_key=account_key,
             permission=BlobSasPermissions(read="r" in permissions),
-            expiry=datetime.now(UTC) + timedelta(minutes=expiry_minutes),
+            expiry=datetime.now(timezone.utc) + timedelta(minutes=expiry_minutes),
         )
 
         # Build the full URL — handle Azurite vs real Azure
