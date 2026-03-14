@@ -88,6 +88,7 @@ class AnalysisCriterion(UUIDMixin, CreatedAtMixin, Base):
             name="criteria_category_enum",
             create_constraint=False,
             native_enum=True,
+            values_callable=lambda e: [m.value for m in e],
         ),
         nullable=False,
     )
@@ -102,6 +103,7 @@ class AnalysisCriterion(UUIDMixin, CreatedAtMixin, Base):
             name="comparison_op_enum",
             create_constraint=False,
             native_enum=True,
+            values_callable=lambda e: [m.value for m in e],
         ),
         nullable=False,
     )

@@ -66,7 +66,7 @@ services:
     image: mcr.microsoft.com/azure-storage/azurite:latest
     container_name: investorinsights-azurite
     restart: unless-stopped
-    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --loose
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --loose --skipApiVersionCheck
     ports:
       - "10000:10000"
     volumes:

@@ -80,7 +80,8 @@ class Document(UUIDMixin, TimestampMixin, Base):
         index=True,
     )
     doc_type: Mapped[DocType] = mapped_column(
-        Enum(DocType, name="doc_type_enum", create_constraint=False, native_enum=True),
+        Enum(DocType, name="doc_type_enum", create_constraint=False, native_enum=True,
+             values_callable=lambda e: [m.value for m in e]),
         nullable=False,
     )
     fiscal_year: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -96,7 +97,8 @@ class Document(UUIDMixin, TimestampMixin, Base):
     file_size_bytes: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     page_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     status: Mapped[DocStatus] = mapped_column(
-        Enum(DocStatus, name="doc_status_enum", create_constraint=False, native_enum=True),
+        Enum(DocStatus, name="doc_status_enum", create_constraint=False, native_enum=True,
+             values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         server_default="uploaded",
     )
