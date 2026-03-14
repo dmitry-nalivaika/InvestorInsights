@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import Select, delete, func, or_, select
 
 from app.models.company import Company
+from app.models.document import DocStatus, Document
+from app.models.financial import FinancialStatement
 from app.observability.logging import get_logger
 
 if TYPE_CHECKING:
@@ -200,6 +202,198 @@ class CompanyRepository:
         stmt = select(func.count()).select_from(Company)
         result = await self._session.execute(stmt)
         return result.scalar_one()
+
+    async def get_summary_stats(
+        self,
+        company_id: uuid.UUID,
+    ) -> dict[str, Any]:
+        """Return doc_count, latest_filing_date, readiness_pct for a company.
+
+        Used by the list endpoint (T105) to enrich CompanyListItem.
+        """
+        # Doc count
+        doc_count_stmt = (
+            select(func.count())
+            .select_from(Document)
+            .where(Document.company_id == company_id)
+        )
+        doc_count = (await self._session.execute(doc_count_stmt)).scalar_one()
+
+        # Latest filing date
+        latest_date_stmt = (
+            select(func.max(Document.filing_date))
+            .where(Document.company_id == company_id)
+        )
+        latest_filing_date = (await self._session.execute(latest_date_stmt)).scalar_one()
+
+        # Readiness: count of READY docs / total docs
+        if doc_count > 0:
+            ready_count_stmt = (
+                select(func.count())
+                .select_from(Document)
+                .where(
+                    Document.company_id == company_id,
+                    Document.status == DocStatus.READY,
+                )
+            )
+            ready_count = (await self._session.execute(ready_count_stmt)).scalar_one()
+            readiness_pct = round(ready_count / doc_count * 100, 1)
+        else:
+            readiness_pct = 0.0
+
+        return {
+            "doc_count": doc_count,
+            "latest_filing_date": latest_filing_date,
+            "readiness_pct": readiness_pct,
+        }
+
+    async def get_bulk_summary_stats(
+        self,
+        company_ids: list[uuid.UUID],
+    ) -> dict[uuid.UUID, dict[str, Any]]:
+        """Return summary stats for multiple companies in bulk.
+
+        Executes two aggregate queries instead of N per-company queries.
+        """
+        if not company_ids:
+            return {}
+
+        # Doc counts and latest filing date per company
+        doc_stats_stmt = (
+            select(
+                Document.company_id,
+                func.count().label("doc_count"),
+                func.max(Document.filing_date).label("latest_filing_date"),
+            )
+            .where(Document.company_id.in_(company_ids))
+            .group_by(Document.company_id)
+        )
+        doc_rows = (await self._session.execute(doc_stats_stmt)).all()
+        doc_map: dict[uuid.UUID, dict[str, Any]] = {
+            row.company_id: {
+                "doc_count": row.doc_count,
+                "latest_filing_date": row.latest_filing_date,
+            }
+            for row in doc_rows
+        }
+
+        # Ready counts per company
+        ready_stats_stmt = (
+            select(
+                Document.company_id,
+                func.count().label("ready_count"),
+            )
+            .where(
+                Document.company_id.in_(company_ids),
+                Document.status == DocStatus.READY,
+            )
+            .group_by(Document.company_id)
+        )
+        ready_rows = (await self._session.execute(ready_stats_stmt)).all()
+        ready_map: dict[uuid.UUID, int] = {
+            row.company_id: row.ready_count for row in ready_rows
+        }
+
+        # Assemble results
+        result: dict[uuid.UUID, dict[str, Any]] = {}
+        for cid in company_ids:
+            doc_info = doc_map.get(cid, {"doc_count": 0, "latest_filing_date": None})
+            doc_count = doc_info["doc_count"]
+            ready_count = ready_map.get(cid, 0)
+            readiness_pct = round(ready_count / doc_count * 100, 1) if doc_count > 0 else 0.0
+            result[cid] = {
+                "doc_count": doc_count,
+                "latest_filing_date": doc_info["latest_filing_date"],
+                "readiness_pct": readiness_pct,
+            }
+        return result
+
+    async def get_detail_summary(
+        self,
+        company_id: uuid.UUID,
+    ) -> dict[str, Any]:
+        """Return rich summary for the company detail endpoint.
+
+        Includes documents_summary (by_status, by_type, year_range),
+        financials_summary, and recent_sessions.
+        """
+        from app.models.session import ChatSession
+
+        # ── Documents by status ──────────────────────────────────
+        status_stmt = (
+            select(Document.status, func.count().label("cnt"))
+            .where(Document.company_id == company_id)
+            .group_by(Document.status)
+        )
+        status_rows = (await self._session.execute(status_stmt)).all()
+        by_status = {row.status.value: row.cnt for row in status_rows}
+        total_docs = sum(by_status.values())
+
+        # ── Documents by type ────────────────────────────────────
+        type_stmt = (
+            select(Document.doc_type, func.count().label("cnt"))
+            .where(Document.company_id == company_id)
+            .group_by(Document.doc_type)
+        )
+        type_rows = (await self._session.execute(type_stmt)).all()
+        by_type = {row.doc_type.value: row.cnt for row in type_rows}
+
+        # ── Document year range ──────────────────────────────────
+        year_stmt = (
+            select(
+                func.min(Document.fiscal_year).label("min_year"),
+                func.max(Document.fiscal_year).label("max_year"),
+            )
+            .where(Document.company_id == company_id)
+        )
+        year_row = (await self._session.execute(year_stmt)).one()
+
+        # ── Financials summary ───────────────────────────────────
+        fin_count_stmt = (
+            select(func.count())
+            .select_from(FinancialStatement)
+            .where(FinancialStatement.company_id == company_id)
+        )
+        fin_count = (await self._session.execute(fin_count_stmt)).scalar_one()
+
+        fin_year_stmt = (
+            select(
+                func.min(FinancialStatement.fiscal_year).label("min_year"),
+                func.max(FinancialStatement.fiscal_year).label("max_year"),
+            )
+            .where(FinancialStatement.company_id == company_id)
+        )
+        fin_year_row = (await self._session.execute(fin_year_stmt)).one()
+
+        # ── Recent sessions (last 5) ────────────────────────────
+        sessions_stmt = (
+            select(ChatSession)
+            .where(ChatSession.company_id == company_id)
+            .order_by(ChatSession.updated_at.desc())
+            .limit(5)
+        )
+        sessions_result = await self._session.execute(sessions_stmt)
+        recent_sessions = list(sessions_result.scalars().all())
+
+        return {
+            "documents_summary": {
+                "total": total_docs,
+                "by_status": by_status,
+                "by_type": by_type,
+                "year_range": {
+                    "min": year_row.min_year,
+                    "max": year_row.max_year,
+                },
+            },
+            "financials_summary": {
+                "periods_available": fin_count,
+                "year_range": {
+                    "min": fin_year_row.min_year,
+                    "max": fin_year_row.max_year,
+                },
+            },
+            "recent_sessions": recent_sessions,
+        }
 
     # ── Private helpers ──────────────────────────────────────────
 

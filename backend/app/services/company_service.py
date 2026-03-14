@@ -164,6 +164,22 @@ class CompanyService:
             offset=offset,
         )
 
+    # ── Summary stats (T105) ────────────────────────────────────
+
+    async def get_bulk_summary_stats(
+        self,
+        company_ids: list[uuid.UUID],
+    ) -> dict[uuid.UUID, dict[str, Any]]:
+        """Return doc_count / latest_filing_date / readiness_pct for a batch of companies."""
+        return await self._repo.get_bulk_summary_stats(company_ids)
+
+    async def get_detail_summary(
+        self,
+        company_id: uuid.UUID,
+    ) -> dict[str, Any]:
+        """Return rich summary (documents, financials, sessions) for company detail."""
+        return await self._repo.get_detail_summary(company_id)
+
     # ── Update ───────────────────────────────────────────────────
 
     async def update_company(

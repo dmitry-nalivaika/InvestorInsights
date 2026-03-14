@@ -77,7 +77,23 @@ def _make_company_obj(**overrides: Any) -> MagicMock:
 @pytest.fixture()
 def mock_service() -> AsyncMock:
     """Return an AsyncMock of CompanyService."""
-    return AsyncMock(spec=CompanyService)
+    svc = AsyncMock(spec=CompanyService)
+    # T105 — pre-configure summary stat defaults so list/detail endpoints work
+    svc.get_bulk_summary_stats.return_value = {}
+    svc.get_detail_summary.return_value = {
+        "documents_summary": {
+            "total": 0,
+            "by_status": {},
+            "by_type": {},
+            "year_range": {"min": None, "max": None},
+        },
+        "financials_summary": {
+            "periods_available": 0,
+            "year_range": {"min": None, "max": None},
+        },
+        "recent_sessions": [],
+    }
+    return svc
 
 
 @pytest.fixture()
@@ -182,6 +198,20 @@ class TestListCompanies:
             _make_company_obj(id=_COMPANY_ID_2, ticker="MSFT", name="Microsoft"),
         ]
         mock_service.list_companies.return_value = (companies, 2)
+        # T105 — supply summary stats for the list endpoint
+        from datetime import date
+        mock_service.get_bulk_summary_stats.return_value = {
+            _COMPANY_ID: {
+                "doc_count": 3,
+                "latest_filing_date": date(2024, 3, 15),
+                "readiness_pct": 66.7,
+            },
+            _COMPANY_ID_2: {
+                "doc_count": 1,
+                "latest_filing_date": date(2023, 12, 31),
+                "readiness_pct": 100.0,
+            },
+        }
 
         resp = client.get("/api/v1/companies", headers=auth_header)
 
@@ -192,6 +222,14 @@ class TestListCompanies:
         tickers = [item["ticker"] for item in body["items"]]
         assert "AAPL" in tickers
         assert "MSFT" in tickers
+
+        # T105 — Verify summary stats are present in list items
+        aapl_item = next(i for i in body["items"] if i["ticker"] == "AAPL")
+        assert aapl_item["doc_count"] == 3
+        assert aapl_item["readiness_pct"] == 66.7
+        msft_item = next(i for i in body["items"] if i["ticker"] == "MSFT")
+        assert msft_item["doc_count"] == 1
+        assert msft_item["readiness_pct"] == 100.0
 
     def test_list_search_param(
         self, client: TestClient, auth_header: dict, mock_service: AsyncMock,
@@ -237,6 +275,20 @@ class TestGetCompany:
         self, client: TestClient, auth_header: dict, mock_service: AsyncMock,
     ) -> None:
         mock_service.get_company.return_value = _make_company_obj()
+        # T105 — supply rich detail summary
+        mock_service.get_detail_summary.return_value = {
+            "documents_summary": {
+                "total": 5,
+                "by_status": {"ready": 3, "error": 1, "uploaded": 1},
+                "by_type": {"10-K": 3, "10-Q": 2},
+                "year_range": {"min": 2021, "max": 2024},
+            },
+            "financials_summary": {
+                "periods_available": 4,
+                "year_range": {"min": 2021, "max": 2024},
+            },
+            "recent_sessions": [],
+        }
 
         resp = client.get(
             f"/api/v1/companies/{_COMPANY_ID}",
@@ -246,8 +298,14 @@ class TestGetCompany:
         assert resp.status_code == 200
         body = resp.json()
         assert body["ticker"] == "AAPL"
-        assert "documents_summary" in body
-        assert "financials_summary" in body
+        # T105 — verify populated summary stats
+        assert body["documents_summary"]["total"] == 5
+        assert body["documents_summary"]["by_status"]["ready"] == 3
+        assert body["documents_summary"]["by_type"]["10-K"] == 3
+        assert body["documents_summary"]["year_range"]["min"] == 2021
+        assert body["financials_summary"]["periods_available"] == 4
+        assert body["financials_summary"]["year_range"]["max"] == 2024
+        assert body["recent_sessions"] == []
 
     def test_get_not_found(
         self, client: TestClient, auth_header: dict, mock_service: AsyncMock,

@@ -486,3 +486,71 @@ class TestMergeCreateFields:
         assert result["name"] == "My Apple"          # caller wins
         assert result["cik"] == "0000320193"          # from SEC
         assert result["sector"] == "Electronic Computers"  # from SEC
+
+
+# =====================================================================
+# Summary stats (T105)
+# =====================================================================
+
+
+class TestBulkSummaryStats:
+    """Tests for CompanyService.get_bulk_summary_stats (T105)."""
+
+    @pytest.mark.anyio
+    async def test_bulk_stats_delegates_to_repo(self) -> None:
+        """get_bulk_summary_stats passes through to repo."""
+        repo = AsyncMock()
+        expected = {
+            uuid.uuid4(): {"doc_count": 3, "latest_filing_date": None, "readiness_pct": 66.7},
+        }
+        repo.get_bulk_summary_stats.return_value = expected
+
+        svc = _build_service(repo_mock=repo)
+        company_ids = list(expected.keys())
+        result = await svc.get_bulk_summary_stats(company_ids)
+
+        repo.get_bulk_summary_stats.assert_awaited_once_with(company_ids)
+        assert result == expected
+
+    @pytest.mark.anyio
+    async def test_bulk_stats_empty_ids(self) -> None:
+        """Empty company_ids list returns empty dict."""
+        repo = AsyncMock()
+        repo.get_bulk_summary_stats.return_value = {}
+
+        svc = _build_service(repo_mock=repo)
+        result = await svc.get_bulk_summary_stats([])
+
+        assert result == {}
+
+
+class TestDetailSummary:
+    """Tests for CompanyService.get_detail_summary (T105)."""
+
+    @pytest.mark.anyio
+    async def test_detail_summary_delegates_to_repo(self) -> None:
+        """get_detail_summary passes through to repo."""
+        repo = AsyncMock()
+        company_id = uuid.uuid4()
+        expected = {
+            "documents_summary": {
+                "total": 5,
+                "by_status": {"ready": 3, "error": 2},
+                "by_type": {"10-K": 3, "10-Q": 2},
+                "year_range": {"min": 2021, "max": 2024},
+            },
+            "financials_summary": {
+                "periods_available": 4,
+                "year_range": {"min": 2021, "max": 2024},
+            },
+            "recent_sessions": [],
+        }
+        repo.get_detail_summary.return_value = expected
+
+        svc = _build_service(repo_mock=repo)
+        result = await svc.get_detail_summary(company_id)
+
+        repo.get_detail_summary.assert_awaited_once_with(company_id)
+        assert result["documents_summary"]["total"] == 5
+        assert result["financials_summary"]["periods_available"] == 4
+        assert result["recent_sessions"] == []

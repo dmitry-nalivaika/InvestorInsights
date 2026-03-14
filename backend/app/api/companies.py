@@ -23,8 +23,12 @@ from app.schemas.company import (
     CompanyCreate,
     CompanyDetail,
     CompanyList,
+    CompanyListItem,
     CompanyRead,
     CompanyUpdate,
+    DocumentsSummary,
+    FinancialsSummary,
+    YearRange,
 )
 from app.services.company_service import CompanyService
 
@@ -87,9 +91,19 @@ async def list_companies(
         limit=pagination.limit,
         offset=pagination.offset,
     )
-    # Build list items — doc_count / latest_filing_date / readiness_pct
-    # are defaults (0 / None / 0.0) until T105 adds summary stats.
-    items = [CompanyRead.model_validate(c) for c in companies]
+    # T105 — Enrich list items with summary stats (doc_count, latest_filing, readiness)
+    company_ids = [c.id for c in companies]
+    stats_map = await service.get_bulk_summary_stats(company_ids) if company_ids else {}
+
+    items: list[CompanyListItem] = []
+    for c in companies:
+        item = CompanyListItem.model_validate(c)
+        stats = stats_map.get(c.id, {})
+        item.doc_count = stats.get("doc_count", 0)
+        item.latest_filing_date = stats.get("latest_filing_date")
+        item.readiness_pct = stats.get("readiness_pct", 0.0)
+        items.append(item)
+
     return CompanyList(
         items=items,
         total=total,
@@ -113,9 +127,45 @@ async def get_company(
 ) -> CompanyDetail:
     """Fetch a single company with summary statistics."""
     company = await service.get_company(company_id)
-    # Documents/financials/sessions summaries are defaults until
-    # later phases populate them (T105, Phase 4, Phase 5).
-    return CompanyDetail.model_validate(company)
+    detail = CompanyDetail.model_validate(company)
+
+    # T105 — Populate summary statistics from documents, financials, sessions
+    summary = await service.get_detail_summary(company_id)
+
+    doc_summary = summary.get("documents_summary", {})
+    detail.documents_summary = DocumentsSummary(
+        total=doc_summary.get("total", 0),
+        by_status=doc_summary.get("by_status", {}),
+        by_type=doc_summary.get("by_type", {}),
+        year_range=YearRange(
+            min=doc_summary.get("year_range", {}).get("min"),
+            max=doc_summary.get("year_range", {}).get("max"),
+        ),
+    )
+
+    fin_summary = summary.get("financials_summary", {})
+    detail.financials_summary = FinancialsSummary(
+        periods_available=fin_summary.get("periods_available", 0),
+        year_range=YearRange(
+            min=fin_summary.get("year_range", {}).get("min"),
+            max=fin_summary.get("year_range", {}).get("max"),
+        ),
+    )
+
+    # Recent sessions — serialize ORM objects to dicts
+    raw_sessions = summary.get("recent_sessions", [])
+    detail.recent_sessions = [
+        {
+            "id": str(s.id),
+            "title": s.title,
+            "message_count": s.message_count,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        for s in raw_sessions
+    ]
+
+    return detail
 
 
 # ── PUT /companies/{company_id} ─────────────────────────────────
