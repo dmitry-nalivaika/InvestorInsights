@@ -126,7 +126,7 @@ async def _ingest_document_async(document_id: str) -> dict:
        document as ERROR — isolating the error-status write from any dirty
        state in the original session.
     """
-    from app.clients.storage_client import init_storage_client
+    from app.clients.storage_client import close_storage_client, init_storage_client
     from app.config import get_settings
     from app.db.repositories.company_repo import CompanyRepository
     from app.db.repositories.document_repo import DocumentRepository
@@ -137,12 +137,11 @@ async def _ingest_document_async(document_id: str) -> dict:
     settings = get_settings()
     factory = build_async_session_factory(settings)
 
-    # Ensure storage client is initialised for worker process
-    try:
-        from app.clients.storage_client import get_storage_client
-        get_storage_client()
-    except RuntimeError:
-        await init_storage_client(settings)
+    # Always create a fresh storage client per task invocation.
+    # asyncio.run() creates/destroys an event loop each time, so any
+    # client from a previous run is bound to a closed loop.
+    await close_storage_client()
+    await init_storage_client(settings)
 
     async with factory() as session:
         try:

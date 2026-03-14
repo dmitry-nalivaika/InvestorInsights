@@ -30,7 +30,7 @@ async def _fetch_sec_filings_async(
 ) -> dict:
     """Async implementation of SEC filing fetch."""
     from app.clients.sec_client import get_sec_client, init_sec_client
-    from app.clients.storage_client import StorageClient, init_storage_client
+    from app.clients.storage_client import StorageClient, close_storage_client, init_storage_client
     from app.config import get_settings
     from app.db.repositories.company_repo import CompanyRepository
     from app.db.repositories.document_repo import DocumentRepository
@@ -46,12 +46,11 @@ async def _fetch_sec_filings_async(
     except RuntimeError:
         sec_client = init_sec_client(settings)
 
-    # Ensure storage client is initialised for worker process
-    try:
-        from app.clients.storage_client import get_storage_client
-        get_storage_client()
-    except RuntimeError:
-        await init_storage_client(settings)
+    # Always create a fresh storage client per task invocation.
+    # asyncio.run() creates/destroys an event loop each time, so any
+    # client from a previous run is bound to a closed loop.
+    await close_storage_client()
+    await init_storage_client(settings)
 
     async with factory() as session:
         company_repo = CompanyRepository(session)
